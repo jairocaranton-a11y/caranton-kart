@@ -76,14 +76,35 @@
     #btnRestart { margin-top: 16px; background: #FFD700; color: #000; font-size: clamp(15px,2vw,20px); font-weight: 900; padding: 14px 44px; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #a05000; }
     #btnRestart:hover { background: #FFE566; }
 
-    /* ── MOBILE CONTROLS ── */
-    #mobileControls { position: fixed; bottom: 0; left: 0; width: 100%; display: none; pointer-events: none; z-index: 50; }
-    .dpad { position: absolute; bottom: 20px; left: 20px; width: 190px; height: 190px; pointer-events: all; }
-    .dBtn { position: absolute; width: 56px; height: 56px; background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; user-select: none; -webkit-user-select: none; touch-action: none; color: white; }
-    #dUp { top:0; left:67px; } #dDown { top:134px; left:67px; } #dLeft { top:67px; left:0; } #dRight { top:67px; left:134px; }
-    #accelBtn { position: absolute; bottom: 28px; right: 28px; width: 84px; height: 84px; border-radius: 50%; background: rgba(0,200,80,.3); border: 3px solid rgba(0,255,80,.6); display: flex; align-items: center; justify-content: center; font-size: 30px; user-select: none; touch-action: none; pointer-events: all; }
-    #brakeBtn { position: absolute; bottom: 32px; right: 126px; width: 62px; height: 62px; border-radius: 50%; background: rgba(200,30,30,.3); border: 3px solid rgba(255,60,60,.6); display: flex; align-items: center; justify-content: center; font-size: 24px; user-select: none; touch-action: none; pointer-events: all; }
-    #itemBtn  { position: absolute; bottom: 120px; right: 28px; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,215,0,.3); border: 3px solid rgba(255,215,0,.7); display: flex; align-items: center; justify-content: center; font-size: 24px; user-select: none; touch-action: none; pointer-events: all; }
+    /* ── JOYSTICK MÓVIL ── */
+    #joystickArea { display: none; position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+    #joyBase {
+      position: absolute; bottom: 40px; left: 40px;
+      width: 110px; height: 110px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.18);
+      pointer-events: all; touch-action: none;
+      transition: opacity .2s;
+    }
+    #joyKnob {
+      position: absolute; width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.22);
+      border: 2px solid rgba(255,255,255,0.4);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      transition: transform .05s;
+      pointer-events: none;
+    }
+    /* Botón de ítem: pequeño, esquina derecha */
+    #joyItemBtn {
+      position: absolute; bottom: 52px; right: 28px;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255,215,0,0.18);
+      border: 2px solid rgba(255,215,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; pointer-events: all; touch-action: none;
+      user-select: none; -webkit-user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -128,16 +149,9 @@
 </div>
 
 <!-- Controles móvil -->
-<div id="mobileControls">
-  <div class="dpad">
-    <div class="dBtn" id="dUp">▲</div>
-    <div class="dBtn" id="dDown">▼</div>
-    <div class="dBtn" id="dLeft">◄</div>
-    <div class="dBtn" id="dRight">►</div>
-  </div>
-  <div id="accelBtn">🏎️</div>
-  <div id="brakeBtn">🛑</div>
-  <div id="itemBtn">🎁</div>
+<div id="joystickArea">
+  <div id="joyBase"><div id="joyKnob"></div></div>
+  <div id="joyItemBtn">🎁</div>
 </div>
 
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js" } }</script>
@@ -155,12 +169,17 @@ const CHARS = [
 ];
 
 // ══════════════════════════════════════════
-//  RENDERER
+//  DETECCIÓN MÓVIL
+// ══════════════════════════════════════════
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+// ══════════════════════════════════════════
+//  RENDERER  (ajustado para móvil)
 // ══════════════════════════════════════════
 const canvas = document.getElementById('gameCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile });
+renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = !isMobile;   // sombras OFF en móvil (rendimiento)
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
@@ -467,8 +486,8 @@ function buildEnvironment() {
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
   scene.add(ground);
 
-  // Árboles billboard con colisión
-  for (let i = 0; i < 90; i++) {
+  // Árboles billboard con colisión (menos en móvil para mejor rendimiento)
+  for (let i = 0; i < (isMobile ? 40 : 90); i++) {
     const angle = Math.random()*Math.PI*2;
     const r = 76 + Math.random()*90; // empiezan a r=76 para no tapar la pista
     const x = Math.cos(angle)*r, z = Math.sin(angle)*r;
@@ -758,24 +777,103 @@ document.addEventListener('keydown', e=>{
 document.addEventListener('keyup', e=>{ keys[e.code]=false; });
 
 function getInput() {
+  // Joystick móvil tiene prioridad
+  if (joy.active) {
+    return {
+      fwd:  -joy.dy,   // arriba en joystick = adelante
+      turn: -joy.dx,   // izquierda en joystick = girar izquierda
+    };
+  }
   return {
-    fwd:  (keys['ArrowUp']   ||keys['KeyW'])?1:(keys['ArrowDown']||keys['KeyS'])?-1:0,
-    turn: (keys['ArrowLeft'] ||keys['KeyA'])?1:(keys['ArrowRight']||keys['KeyD'])?-1:0,
+    fwd:  (keys['ArrowUp']  || keys['KeyW']) ? 1 : (keys['ArrowDown']  || keys['KeyS']) ? -1 : 0,
+    turn: (keys['ArrowLeft'] || keys['KeyA']) ? 1 : (keys['ArrowRight'] || keys['KeyD']) ? -1 : 0,
   };
 }
 
+// ── Estado del joystick ──
+const joy = { active: false, ox: 0, oy: 0, dx: 0, dy: 0 };
+const JOY_R = 42; // radio máximo del knob
+
 function setupTouchControls() {
-  if(!('ontouchstart' in window)&&!navigator.maxTouchPoints) return;
-  document.getElementById('mobileControls').style.display='block';
-  const map={dUp:'ArrowUp',dDown:'ArrowDown',dLeft:'ArrowLeft',dRight:'ArrowRight',accelBtn:'ArrowUp',brakeBtn:'ArrowDown'};
-  Object.entries(map).forEach(([id,code])=>{
-    const el=document.getElementById(id); if(!el)return;
-    el.addEventListener('touchstart',e=>{e.preventDefault();keys[code]=true;},{passive:false});
-    el.addEventListener('touchend',  e=>{e.preventDefault();keys[code]=false;},{passive:false});
-  });
-  const itemBtnEl=document.getElementById('itemBtn');
-  if(itemBtnEl){
-    itemBtnEl.addEventListener('touchstart',e=>{e.preventDefault();if(state==='racing')activateItem();},{passive:false});
+  if (!isMobile) return;
+  document.getElementById('joystickArea').style.display = 'block';
+
+  const base  = document.getElementById('joyBase');
+  const knob  = document.getElementById('joyKnob');
+  const area  = document.getElementById('joystickArea');
+  const itemB = document.getElementById('joyItemBtn');
+
+  // Botón de ítem
+  itemB.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (state === 'racing') activateItem();
+  }, { passive: false });
+
+  // Joystick: empieza donde tocas en el lado izquierdo
+  area.style.pointerEvents = 'none'; // el área no bloquea, solo sirve de referencia
+  base.addEventListener('touchstart', onJoyStart, { passive: false });
+  base.addEventListener('touchmove',  onJoyMove,  { passive: false });
+  base.addEventListener('touchend',   onJoyEnd,   { passive: false });
+  base.addEventListener('touchcancel',onJoyEnd,   { passive: false });
+
+  // También permitir tocar cualquier parte del lado izquierdo
+  document.addEventListener('touchstart', e => {
+    if (e.target === itemB) return;
+    const t = e.touches[0];
+    if (t.clientX < window.innerWidth * 0.55) onJoyStart(e);
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (joy.active) { e.preventDefault(); onJoyMove(e); }
+  }, { passive: false });
+  document.addEventListener('touchend',   e => { if (joy.active) onJoyEnd(e); }, { passive: false });
+  document.addEventListener('touchcancel',e => { if (joy.active) onJoyEnd(e); }, { passive: false });
+
+  function onJoyStart(e) {
+    e.preventDefault();
+    const t = e.touches[0];
+    if (t.clientX >= window.innerWidth * 0.55) return;
+    joy.active = true;
+    joy.ox = t.clientX; joy.oy = t.clientY;
+    joy.dx = 0; joy.dy = 0;
+    // Mover la base al punto de toque
+    base.style.left   = (t.clientX - 55) + 'px';
+    base.style.bottom = 'auto';
+    base.style.top    = (t.clientY - 55) + 'px';
+    base.style.opacity = '1';
+    knob.style.transition = 'none';
+    knob.style.transform = 'translate(-50%,-50%)';
+  }
+
+  function onJoyMove(e) {
+    if (!joy.active) return;
+    e.preventDefault();
+    // Buscar el toque correcto (el del lado izquierdo)
+    let t = null;
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].clientX < window.innerWidth * 0.55) { t = e.touches[i]; break; }
+    }
+    if (!t) return;
+
+    const rawX = t.clientX - joy.ox;
+    const rawY = t.clientY - joy.oy;
+    const dist = Math.sqrt(rawX*rawX + rawY*rawY);
+    const clamped = Math.min(dist, JOY_R);
+    const angle = Math.atan2(rawY, rawX);
+
+    joy.dx = Math.cos(angle) * clamped / JOY_R;  // -1..1 horizontal
+    joy.dy = Math.sin(angle) * clamped / JOY_R;  // -1..1 vertical
+
+    const kx = Math.cos(angle) * clamped;
+    const ky = Math.sin(angle) * clamped;
+    knob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+  }
+
+  function onJoyEnd(e) {
+    joy.active = false;
+    joy.dx = 0; joy.dy = 0;
+    knob.style.transition = 'transform .15s';
+    knob.style.transform = 'translate(-50%,-50%)';
+    base.style.opacity = '0.45';
   }
 }
 
