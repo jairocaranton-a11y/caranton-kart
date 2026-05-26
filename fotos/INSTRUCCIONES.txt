@@ -1,0 +1,24 @@
+📸 INSTRUCCIONES PARA LAS FOTOS
+================================
+
+Guarda las fotos de cada personaje en esta carpeta con EXACTAMENTE estos nombres:
+
+  santiago.jpg   → foto de Santiago
+  liam.jpg       → foto de Liam
+  sergio.jpg     → foto de Sergio
+  esteban.jpg    → foto de Esteban
+
+✅ Las fotos funcionarán automáticamente cuando abras el juego con un servidor local.
+
+⚠️ IMPORTANTE: Para que las fotos carguen correctamente, NO abras
+   el index.html haciendo doble clic. En cambio, abre una terminal
+   en la carpeta familia-kart y escribe:
+
+   npx serve .
+
+   Luego abre http://localhost:3000 en tu navegador.
+
+   (Si no tienes Node.js, descárgalo gratis en https://nodejs.org)
+
+🎮 Sin fotos el juego igual funciona — los personajes tendrán
+   los colores y las iniciales de cada uno.
