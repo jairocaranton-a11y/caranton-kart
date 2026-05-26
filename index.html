@@ -17,11 +17,11 @@
     #posBox{position:absolute;top:14px;right:14px;background:rgba(0,0,0,.7);border-radius:12px;padding:5px 16px;font-size:38px;font-weight:900;color:#FFD700;border:2px solid rgba(255,215,0,.3);}
     #speedBox{position:absolute;bottom:14px;right:14px;background:rgba(0,0,0,.7);border-radius:12px;padding:7px 18px;color:#fff;font-size:22px;font-weight:900;border:2px solid rgba(255,255,255,.22);}
     #minimapBox{position:absolute;bottom:14px;left:14px;background:rgba(0,0,0,.55);border-radius:50%;border:2px solid rgba(255,255,255,.3);}
-    #itemHud{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;}
-    #itemSlot{width:58px;height:58px;border-radius:12px;background:rgba(0,0,0,.7);border:3px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:32px;}
+    #itemHud{position:absolute;top:62px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;}
+    #itemSlot{width:54px;height:54px;border-radius:12px;background:rgba(0,0,0,.7);border:3px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:30px;}
     #itemSlot.ready{border-color:#FFD700;animation:pulse .7s infinite alternate;}
-    #itemLabel{color:rgba(255,255,255,.75);font-size:10px;font-weight:700;letter-spacing:1px;}
-    #boostBar{position:absolute;bottom:58px;left:50%;transform:translateX(-50%);width:110px;height:7px;background:rgba(255,255,255,.18);border-radius:4px;display:none;}
+    #itemLabel{color:rgba(255,255,255,.75);font-size:9px;font-weight:700;letter-spacing:1px;}
+    #boostBar{position:absolute;top:126px;left:50%;transform:translateX(-50%);width:110px;height:7px;background:rgba(255,255,255,.18);border-radius:4px;display:none;}
     #boostFill{height:100%;background:linear-gradient(90deg,#00ffaa,#00aaff);border-radius:4px;}
     @keyframes pulse{from{box-shadow:0 0 8px rgba(255,215,0,.4);}to{box-shadow:0 0 20px rgba(255,215,0,1);}}
 
@@ -62,7 +62,9 @@
     #podiumScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,rgba(0,0,0,.92),rgba(10,0,30,.96));display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:100;}
     #podiumTitle{color:#FFD700;font-size:clamp(28px,6vw,54px);font-weight:900;text-shadow:3px 3px 0 #a05000;margin-bottom:8px;}
     #podiumStage{display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;}
-    .podSlot{display:flex;flex-direction:column;align-items:center;gap:6px;}
+    .podSlot{display:flex;flex-direction:column;align-items:center;gap:5px;}
+    .podAv{width:clamp(44px,8vw,68px);height:clamp(44px,8vw,68px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(16px,3vw,26px);font-weight:900;color:#fff;overflow:hidden;border:3px solid rgba(255,255,255,.6);}
+    .podAv img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
     .podName{color:#fff;font-size:clamp(11px,1.8vw,15px);font-weight:900;}
     .podTime{color:rgba(255,255,255,.65);font-size:clamp(9px,1.3vw,12px);}
     .podBlock{border-radius:8px 8px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:10px;font-size:clamp(20px,4vw,32px);}
@@ -76,9 +78,14 @@
 
     /* JOYSTICK */
     #joystickArea{display:none;position:fixed;inset:0;z-index:50;pointer-events:none;}
-    #joyBase{position:absolute;bottom:38px;left:36px;width:108px;height:108px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.16);pointer-events:all;touch-action:none;opacity:.5;}
-    #joyKnob{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.38);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
-    #joyItemBtn{position:absolute;bottom:50px;right:26px;width:50px;height:50px;border-radius:50%;background:rgba(255,215,0,.16);border:2px solid rgba(255,215,0,.4);display:flex;align-items:center;justify-content:center;font-size:20px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyBase{position:absolute;bottom:30px;left:26px;width:112px;height:112px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18);pointer-events:all;touch-action:none;opacity:.55;}
+    #joyKnob{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.4);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+    /* Botones derecha */
+    #joyRightBtns{position:absolute;bottom:22px;right:18px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;}
+    #joyItemBtn{width:54px;height:54px;border-radius:14px;background:rgba(255,215,0,.18);border:2px solid rgba(255,215,0,.5);display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyPedals{display:flex;gap:10px;}
+    #joyBrakeBtn{width:62px;height:62px;border-radius:50%;background:rgba(255,60,60,.2);border:2.5px solid rgba(255,60,60,.55);display:flex;align-items:center;justify-content:center;font-size:26px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyGasBtn{width:78px;height:78px;border-radius:50%;background:rgba(60,220,110,.22);border:2.5px solid rgba(60,220,110,.6);display:flex;align-items:center;justify-content:center;font-size:34px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
   </style>
 </head>
 <body>
@@ -122,7 +129,13 @@
 <!-- Joystick móvil -->
 <div id="joystickArea">
   <div id="joyBase"><div id="joyKnob"></div></div>
-  <div id="joyItemBtn">🎁</div>
+  <div id="joyRightBtns">
+    <div id="joyItemBtn">🎁</div>
+    <div id="joyPedals">
+      <div id="joyBrakeBtn">⬇️</div>
+      <div id="joyGasBtn">⬆️</div>
+    </div>
+  </div>
 </div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"}}</script>
@@ -679,7 +692,7 @@ function createKart(charIdx){
   const nameTag=new THREE.Mesh(new THREE.PlaneGeometry(2.2,0.52),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
   nameTag.position.set(0,2.5,0);nameTag.userData.isNameTag=true;group.add(nameTag);
 
-  group.userData={charIdx,speed:0,angle:0,maxSpeed:0.28*ch.speed,baseMaxSpeed:0.28*ch.speed,accel:0.013,friction:0.965,turnRate:0.038,wpIdx:0,lap:-1,finished:false,isPlayer:false,spinTimer:0,boostTimer:0,finishTime:null,lookAhead:8,sideOffset:0,sideSpeed:0.015,aggression:0.7,mistakeTimer:5,mistakeInterval:6};
+  group.userData={charIdx,speed:0,angle:0,maxSpeed:0.28*ch.speed,baseMaxSpeed:0.28*ch.speed,accel:0.013,friction:0.965,turnRate:0.038,wpIdx:0,lap:-1,finished:false,isPlayer:false,spinTimer:0,boostTimer:0,oilCooldown:0,finishTime:null,lookAhead:8,sideOffset:0,sideSpeed:0.015,aggression:0.7,mistakeTimer:5,mistakeInterval:6};
   return group;
 }
 
@@ -718,21 +731,45 @@ document.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Space'){e
 document.addEventListener('keyup',e=>{keys[e.code]=false;});
 
 const joy={active:false,ox:0,oy:0,dx:0,dy:0};
-const JOY_R=42;
+const JOY_R=44;
+const joyGas={active:false}, joyBrake={active:false};
 
 function setupTouchControls(){
   if(!isMobile)return;
   document.getElementById('joystickArea').style.display='block';
-  const base=document.getElementById('joyBase'),knob=document.getElementById('joyKnob'),itemB=document.getElementById('joyItemBtn');
+  const base=document.getElementById('joyBase'),knob=document.getElementById('joyKnob');
+  const itemB=document.getElementById('joyItemBtn');
+  const gasB=document.getElementById('joyGasBtn');
+  const brakeB=document.getElementById('joyBrakeBtn');
+
+  // Botón ITEM
   itemB.addEventListener('touchstart',e=>{e.preventDefault();if(state==='racing')activateItem();},{passive:false});
-  document.addEventListener('touchstart',e=>{if(e.target===itemB)return;const t=e.touches[0];if(t.clientX<window.innerWidth*0.6)onJoyStart(e);},{passive:false});
+
+  // Botón GAS
+  gasB.addEventListener('touchstart',e=>{e.preventDefault();joyGas.active=true;},{passive:false});
+  gasB.addEventListener('touchend',e=>{e.preventDefault();joyGas.active=false;},{passive:false});
+  gasB.addEventListener('touchcancel',()=>{joyGas.active=false;});
+
+  // Botón FRENO
+  brakeB.addEventListener('touchstart',e=>{e.preventDefault();joyBrake.active=true;},{passive:false});
+  brakeB.addEventListener('touchend',e=>{e.preventDefault();joyBrake.active=false;},{passive:false});
+  brakeB.addEventListener('touchcancel',()=>{joyBrake.active=false;});
+
+  // Joystick fijo (sólo giro, base no se mueve)
+  const rightIds=new Set([itemB.id,gasB.id,brakeB.id,'joyRightBtns','joyPedals']);
+  document.addEventListener('touchstart',e=>{
+    const tgt=e.target;if(rightIds.has(tgt.id)||tgt.closest('#joyRightBtns'))return;
+    const t=e.touches[0];if(t.clientX<window.innerWidth*0.6)onJoyStart(e);
+  },{passive:false});
   document.addEventListener('touchmove',e=>{if(joy.active){e.preventDefault();onJoyMove(e);}},{passive:false});
   document.addEventListener('touchend',e=>{if(joy.active)onJoyEnd();},{passive:false});
   document.addEventListener('touchcancel',e=>{if(joy.active)onJoyEnd();},{passive:false});
+
   function onJoyStart(e){
     const t=e.touches[0];if(t.clientX>=window.innerWidth*0.6)return;
     e.preventDefault();joy.active=true;joy.ox=t.clientX;joy.oy=t.clientY;joy.dx=0;joy.dy=0;
-    base.style.left=(t.clientX-54)+'px';base.style.bottom='auto';base.style.top=(t.clientY-54)+'px';base.style.opacity='1';
+    // Base FIJA — sólo el knob se mueve
+    base.style.opacity='0.75';
     knob.style.transition='none';knob.style.transform='translate(-50%,-50%)';
   }
   function onJoyMove(e){
@@ -741,17 +778,26 @@ function setupTouchControls(){
     const rawX=t.clientX-joy.ox,rawY=t.clientY-joy.oy;
     const dist=Math.sqrt(rawX*rawX+rawY*rawY),cl=Math.min(dist,JOY_R),ang=Math.atan2(rawY,rawX);
     joy.dx=Math.cos(ang)*cl/JOY_R;joy.dy=Math.sin(ang)*cl/JOY_R;
-    knob.style.transform=`translate(calc(-50% + ${Math.cos(ang)*cl}px), calc(-50% + ${Math.sin(ang)*cl}px))`;
+    // El knob se mueve dentro del círculo fijo
+    const bRect=base.getBoundingClientRect();
+    const bCx=bRect.left+bRect.width/2,bCy=bRect.top+bRect.height/2;
+    const kx=Math.cos(ang)*cl,ky=Math.sin(ang)*cl;
+    knob.style.transform=`translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
   }
   function onJoyEnd(){
     joy.active=false;joy.dx=0;joy.dy=0;
     knob.style.transition='transform .15s';knob.style.transform='translate(-50%,-50%)';
-    base.style.opacity='0.45';
+    base.style.opacity='0.55';
   }
 }
 
 function getInput(){
-  if(joy.active)return{fwd:-joy.dy,turn:-joy.dx};
+  if(isMobile){
+    // En móvil: gas/freno con botones, giro con joystick
+    const fwd=joyGas.active?1:joyBrake.active?-0.7:0;
+    const turn=joy.active?-joy.dx:0;
+    return{fwd,turn};
+  }
   return{fwd:(keys['ArrowUp']||keys['KeyW'])?1:(keys['ArrowDown']||keys['KeyS'])?-1:0,turn:(keys['ArrowLeft']||keys['KeyA'])?1:(keys['ArrowRight']||keys['KeyD'])?-1:0};
 }
 
@@ -766,6 +812,7 @@ function isOnGrass(kart){
 
 function updatePlayerKart(dt){
   const u=playerKart.userData;if(u.finished)return;
+  if(u.oilCooldown>0)u.oilCooldown-=dt;
   const inp=getInput();
   if(u.spinTimer>0){u.spinTimer-=dt;u.angle+=0.15;u.speed*=0.88;}
   else{
@@ -784,6 +831,7 @@ function updatePlayerKart(dt){
 
 function updateAI(kart,dt){
   const u=kart.userData;if(u.finished)return;
+  if(u.oilCooldown>0)u.oilCooldown-=dt;
   if(u.spinTimer>0){u.spinTimer-=dt;u.angle+=0.12;u.speed*=0.88;}
   else{
     u.mistakeTimer-=dt;if(u.mistakeTimer<=0){u.mistakeTimer=u.mistakeInterval+Math.random()*4;u.sideSpeed=(Math.random()-.5)*0.09;}
@@ -854,10 +902,11 @@ function checkObstacleCollisions(){
           }
         }
       } else if(obs.type==='aceite'){
-        // Pérdida total de control – giro largo
-        if(dist<obs.r&&Math.abs(kart.userData.speed)>0.04&&kart.userData.spinTimer<=0){
+        // Pérdida de control — con cooldown para poder escapar
+        if(dist<obs.r&&Math.abs(kart.userData.speed)>0.04&&kart.userData.spinTimer<=0&&kart.userData.oilCooldown<=0){
           kart.userData.spinTimer=Math.max(kart.userData.spinTimer,1.4);
-          if(kart.userData.isPlayer&&now-lastCollSnd>500){
+          kart.userData.oilCooldown=3.8; // inmunidad 3.8s: da tiempo de alejarse
+          if(kart.userData.isPlayer&&now-lastCollSnd>400){
             playCollisionSound(); lastCollSnd=now; vib([60,40,60,40,60]);
             showObstaclePopup('🛢️ ¡ACEITE!');
           }
@@ -1083,10 +1132,16 @@ function resolveRace(){
     const timeStr=timeMs?LS.fmt(timeMs):'--:--.--';
     const slot=document.createElement('div');slot.className='podSlot';
     slot.innerHTML=`
+      <div class="podAv" id="podAv_${vi}" style="background:${ch.hex}">${ch.initial}</div>
       <div class="podName" style="color:${ch.hex}">${ch.name}</div>
       <div class="podTime">${timeStr}</div>
       <div class="podBlock ${podClass[vi]}" style="border-top:4px solid ${ch.hex}">${podLabel[vi]}</div>`;
     stage.appendChild(slot);
+    // Cargar foto real del personaje
+    const pImg=new Image();pImg.onload=()=>{
+      const av=document.getElementById('podAv_'+vi);
+      if(av){av.innerHTML='';const im=document.createElement('img');im.src=pImg.src;av.appendChild(im);}
+    };pImg.src=ch.photo;
   });
 
   // 4° lugar
