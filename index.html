@@ -193,8 +193,8 @@ function vib(pat){ if(navigator.vibrate) navigator.vibrate(pat); }
 // ══════════════════════════════════════════
 const isMobile = ('ontouchstart' in window)||navigator.maxTouchPoints>0;
 const canvas = document.getElementById('gameCanvas');
-const renderer = new THREE.WebGLRenderer({canvas,antialias:!isMobile});
-renderer.setPixelRatio(isMobile?1:Math.min(window.devicePixelRatio,2));
+const renderer = new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.shadowMap.enabled = !isMobile;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
