@@ -95,6 +95,7 @@
   <div id="boostBar"><div id="boostFill" style="width:100%"></div></div>
 </div>
 <div id="itemPopup">🎁</div>
+<div id="obstaclePopup" style="position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);font-size:54px;display:none;z-index:150;pointer-events:none;animation:popIn .35s cubic-bezier(.2,1.5,.5,1);"></div>
 <div id="recordFlash">🏆 ¡NUEVO RÉCORD!</div>
 
 <!-- MENU -->
@@ -415,7 +416,7 @@ function checkLapCrossing(kart){
 // ══════════════════════════════════════════
 //  ENTORNO
 // ══════════════════════════════════════════
-let treeObjects=[];
+let obstacleObjects=[];
 
 function makeTreeTexture(){
   const c=document.createElement('canvas');c.width=128;c.height=256;
@@ -439,7 +440,7 @@ function addBillboardTree(x,z,scale){
   const group=new THREE.Group();
   [0,Math.PI/2].forEach(ry=>{const pl=new THREE.Mesh(geo,mat);pl.rotation.y=ry;group.add(pl);});
   group.position.set(x,h/2,z); scene.add(group);
-  treeObjects.push({group,x,z,r:1.1*scale});
+  // Árboles sólo decorativos (sin colisión)
 }
 
 function buildEnvironment(trackCfg){
@@ -464,6 +465,108 @@ function buildEnvironment(trackCfg){
   [0xff2222,0xffaa00,0x22cc22,0x2266ff,0xcc22cc].forEach((c,i)=>{
     const b=new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8),new THREE.MeshLambertMaterial({color:c}));
     b.position.set(-8+i*4,9,-76); scene.add(b);
+  });
+}
+
+// ══════════════════════════════════════════
+//  OBSTÁCULOS EN PISTA
+// ══════════════════════════════════════════
+function createTireStack(x,z){
+  const group=new THREE.Group();
+  const tireMat=new THREE.MeshLambertMaterial({color:0x111111});
+  const stripeMat=new THREE.MeshLambertMaterial({color:0xFF5500});
+  for(let i=0;i<3;i++){
+    const torus=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.27,10,16),tireMat);
+    torus.rotation.x=Math.PI/2; torus.position.y=0.3+i*0.57; group.add(torus);
+    const stripe=new THREE.Mesh(new THREE.TorusGeometry(0.57,0.06,6,16),stripeMat);
+    stripe.rotation.x=Math.PI/2; stripe.position.y=0.3+i*0.57; group.add(stripe);
+  }
+  // Cono de advertencia encima
+  const coneMat=new THREE.MeshLambertMaterial({color:0xFF8800});
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.55,8),coneMat);
+  cone.position.y=2.05; group.add(cone);
+  const coneStripe=new THREE.Mesh(new THREE.CylinderGeometry(0.23,0.23,0.1,8),new THREE.MeshLambertMaterial({color:0xffffff}));
+  coneStripe.position.y=1.78; group.add(coneStripe);
+  group.position.set(x,0,z);
+  scene.add(group);
+  obstacleObjects.push({type:'llanta',mesh:group,x,z,r:0.88});
+}
+
+function createPothole(x,z){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
+  // Sombra exterior
+  ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(131,132,100,76,0,0,Math.PI*2);ctx.fill();
+  // Interior oscuro del hueco
+  const g=ctx.createRadialGradient(128,128,8,128,128,94);
+  g.addColorStop(0,'#070707');g.addColorStop(0.6,'#191208');g.addColorStop(1,'rgba(28,20,5,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(128,128,94,72,0,0,Math.PI*2);ctx.fill();
+  // Grietas
+  ctx.strokeStyle='#2a1e08';ctx.lineWidth=2.5;
+  [[128,42,146,128],[128,42,108,130],[146,128,168,200],[108,130,86,198],[128,128,88,105],[128,128,168,152]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  });
+  // Borde del asfalto roto
+  ctx.strokeStyle='rgba(110,88,35,0.5)';ctx.lineWidth=5;
+  ctx.beginPath();ctx.ellipse(128,125,94,70,-0.1,0,Math.PI*2);ctx.stroke();
+  // Señal amarilla de advertencia
+  ctx.fillStyle='rgba(255,220,0,0.9)';ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⚠',128,22);
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(4.4,3.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,0.03,z);scene.add(mesh);
+  obstacleObjects.push({type:'hueco',mesh,x,z,r:1.7});
+}
+
+function createOilSlick(x,z){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
+  // Base iridiscente del aceite
+  const g=ctx.createRadialGradient(128,128,4,128,128,112);
+  g.addColorStop(0,'rgba(12,0,32,0.97)');
+  g.addColorStop(0.22,'rgba(0,12,80,0.9)');
+  g.addColorStop(0.45,'rgba(0,72,18,0.8)');
+  g.addColorStop(0.68,'rgba(72,52,0,0.62)');
+  g.addColorStop(0.85,'rgba(72,0,22,0.38)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(128,128,118,88,0,0,Math.PI*2);ctx.fill();
+  // Destellos de luz (efecto arcoíris)
+  ctx.fillStyle='rgba(130,210,255,0.22)';ctx.beginPath();ctx.ellipse(96,100,40,22,-0.35,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,130,200,0.18)';ctx.beginPath();ctx.ellipse(158,148,32,18,0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(90,255,140,0.14)';ctx.beginPath();ctx.ellipse(142,88,24,14,0.8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,230,80,0.12)';ctx.beginPath();ctx.ellipse(108,158,28,16,-0.3,0,Math.PI*2);ctx.fill();
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(6.2,4.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,0.028,z);scene.add(mesh);
+  obstacleObjects.push({type:'aceite',mesh,x,z,r:2.3});
+}
+
+function buildTrackObstacles(){
+  obstacleObjects.forEach(o=>{if(o.mesh)scene.remove(o.mesh);});obstacleObjects=[];
+  // 🏎 Llantas apiladas en los bordes de la pista
+  [0.06,0.19,0.32,0.45,0.58,0.71,0.85].forEach((frac,i)=>{
+    const idx=Math.floor(frac*TRACK_SEGS);
+    const p=WAYPTS[idx],pn=WAYPTS[(idx+2)%TRACK_SEGS];
+    const dir=new THREE.Vector3().subVectors(pn,p).normalize();
+    const right=new THREE.Vector3(-dir.z,0,dir.x);
+    const side=i%2===0?1:-1;
+    const pos=p.clone().addScaledVector(right,side*(TRACK_W/2-2.3));
+    createTireStack(pos.x,pos.z);
+  });
+  // 🕳 Huecos en la superficie de la pista
+  [0.12,0.29,0.56,0.79].forEach((frac,i)=>{
+    const idx=Math.floor(frac*TRACK_SEGS);
+    const p=WAYPTS[idx],pn=WAYPTS[(idx+2)%TRACK_SEGS];
+    const dir=new THREE.Vector3().subVectors(pn,p).normalize();
+    const right=new THREE.Vector3(-dir.z,0,dir.x);
+    const pos=p.clone().addScaledVector(right,(i%2===0?-1:1)*2.2);
+    createPothole(pos.x,pos.z);
+  });
+  // 🛢 Manchas de aceite en la pista
+  [0.23,0.49,0.74].forEach((frac,i)=>{
+    const idx=Math.floor(frac*TRACK_SEGS);
+    const p=WAYPTS[idx],pn=WAYPTS[(idx+2)%TRACK_SEGS];
+    const dir=new THREE.Vector3().subVectors(pn,p).normalize();
+    const right=new THREE.Vector3(-dir.z,0,dir.x);
+    const pos=p.clone().addScaledVector(right,(i%2===0?1:-1)*1.6);
+    createOilSlick(pos.x,pos.z);
   });
 }
 
@@ -721,21 +824,43 @@ function checkKartCollisions(){
   }
 }
 
-function checkTreeCollisions(){
+function checkObstacleCollisions(){
+  const now=Date.now();
   karts.forEach(kart=>{
-    treeObjects.forEach(tree=>{
-      const dx=kart.position.x-tree.x,dz=kart.position.z-tree.z;
-      const dist=Math.sqrt(dx*dx+dz*dz),min=tree.r+0.95;
-      if(dist<min&&dist>0.01){
-        const nx=dx/dist,nz=dz/dist;
-        kart.position.x=tree.x+nx*min;kart.position.z=tree.z+nz*min;
-        kart.userData.speed*=-0.35;
-        tree.group.rotation.z=(Math.random()-.5)*0.3;
-        setTimeout(()=>{if(tree.group)tree.group.rotation.z=0;},400);
-        const now=Date.now();if(kart.userData.isPlayer&&now-lastTreeSnd>400){playCollisionSound();lastTreeSnd=now;}
+    obstacleObjects.forEach(obs=>{
+      const dx=kart.position.x-obs.x,dz=kart.position.z-obs.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      if(obs.type==='llanta'){
+        // Colisión sólida: rebote y giro
+        const min=obs.r+0.9;
+        if(dist<min&&dist>0.01){
+          const nx=dx/dist,nz=dz/dist;
+          kart.position.x=obs.x+nx*min; kart.position.z=obs.z+nz*min;
+          kart.userData.speed*=-0.28; kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.6);
+          // Llantas se tambalean al golpe
+          if(obs.mesh){obs.mesh.rotation.z=(Math.random()-.5)*0.4;setTimeout(()=>{if(obs.mesh)obs.mesh.rotation.z=0;},380);}
+          if(kart.userData.isPlayer&&now-lastCollSnd>300){playCollisionSound();lastCollSnd=now;showObstaclePopup('🏎️ ¡LLANTAS!');}
+        }
+      } else if(obs.type==='hueco'){
+        // Frenazo y pequeño giro
+        if(dist<obs.r&&Math.abs(kart.userData.speed)>0.05&&kart.userData.spinTimer<=0){
+          kart.userData.speed*=0.55; kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.5);
+          if(kart.userData.isPlayer&&now-lastCollSnd>500){
+            playBeep(110,0.25,0.28); lastCollSnd=now; vib([35]);
+            showObstaclePopup('🕳️ ¡BACHE!');
+          }
+        }
+      } else if(obs.type==='aceite'){
+        // Pérdida total de control – giro largo
+        if(dist<obs.r&&Math.abs(kart.userData.speed)>0.04&&kart.userData.spinTimer<=0){
+          kart.userData.spinTimer=Math.max(kart.userData.spinTimer,2.6);
+          if(kart.userData.isPlayer&&now-lastCollSnd>500){
+            playCollisionSound(); lastCollSnd=now; vib([60,40,60,40,60]);
+            showObstaclePopup('🛢️ ¡ACEITE!');
+          }
+        }
       }
     });
-    treeObjects.forEach(t=>{if(Math.abs(t.group.rotation.z)>0.005)t.group.rotation.z*=0.85;});
   });
 }
 
@@ -825,6 +950,14 @@ function updateHUD(){
   checkItemPickup();
 }
 
+function showObstaclePopup(txt){
+  const el=document.getElementById('obstaclePopup');
+  el.textContent=txt; el.style.display='block';
+  el.style.animation='none'; void el.offsetWidth;
+  el.style.animation='popIn .35s cubic-bezier(.2,1.5,.5,1)';
+  setTimeout(()=>el.style.display='none',1100);
+}
+
 function drawMinimap(){
   const c=document.getElementById('minimapBox'),ctx=c.getContext('2d');
   ctx.clearRect(0,0,120,120);
@@ -867,6 +1000,7 @@ function buildMenu(){
     buildTrack(cfg);
     buildEnvironment(cfg);
     buildItemBoxes();
+    buildTrackObstacles();
     document.getElementById('menu').style.display='none';
     spawnKarts(selectedChar);
     startCountdown();
@@ -890,7 +1024,7 @@ function clearScene(){
     if(obj===ambientLight||obj===sun)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
-  treeObjects=[];_treeTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
+  obstacleObjects=[];_treeTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
 }
 
 // ══════════════════════════════════════════
@@ -981,7 +1115,7 @@ function animate(t){
   if(state==='racing'){
     updatePlayerKart(dt);
     karts.forEach(k=>{if(!k.userData.isPlayer)updateAI(k,dt);});
-    checkKartCollisions();checkTreeCollisions();
+    checkKartCollisions();checkObstacleCollisions();
     updateItemBoxes(dt);updateProjectiles(dt);
     updateCamera();updateHUD();
   }else if(state==='countdown'){updateCamera();}
