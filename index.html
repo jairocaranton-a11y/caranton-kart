@@ -76,16 +76,18 @@
     #btnRestart{background:#FFD700;color:#000;font-size:clamp(14px,2vw,18px);font-weight:900;padding:12px 40px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 0 #a05000;margin-top:4px;}
     #btnRestart:hover{background:#FFE566;}
 
-    /* JOYSTICK */
+    /* CONTROLES MÓVIL */
     #joystickArea{display:none;position:fixed;inset:0;z-index:50;pointer-events:none;}
-    #joyBase{position:absolute;bottom:30px;left:26px;width:112px;height:112px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18);pointer-events:all;touch-action:none;opacity:.55;}
-    #joyKnob{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.4);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+    /* Flechas izquierda */
+    #joyLeftBtns{position:absolute;bottom:22px;left:14px;display:flex;gap:10px;pointer-events:none;}
+    .joyArrow{width:72px;height:72px;border-radius:16px;background:rgba(255,255,255,.1);border:2.5px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:32px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;active:opacity:.7;}
+    .joyArrow:active{background:rgba(255,255,255,.25);}
     /* Botones derecha */
-    #joyRightBtns{position:absolute;bottom:22px;right:18px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;}
-    #joyItemBtn{width:54px;height:54px;border-radius:14px;background:rgba(255,215,0,.18);border:2px solid rgba(255,215,0,.5);display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyRightBtns{position:absolute;bottom:22px;right:14px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;}
+    #joyItemBtn{width:56px;height:56px;border-radius:14px;background:rgba(255,215,0,.18);border:2px solid rgba(255,215,0,.5);display:flex;align-items:center;justify-content:center;font-size:24px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
     #joyPedals{display:flex;gap:10px;}
-    #joyBrakeBtn{width:62px;height:62px;border-radius:50%;background:rgba(255,60,60,.2);border:2.5px solid rgba(255,60,60,.55);display:flex;align-items:center;justify-content:center;font-size:26px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
-    #joyGasBtn{width:78px;height:78px;border-radius:50%;background:rgba(60,220,110,.22);border:2.5px solid rgba(60,220,110,.6);display:flex;align-items:center;justify-content:center;font-size:34px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyBrakeBtn{width:64px;height:64px;border-radius:50%;background:rgba(255,60,60,.18);border:2.5px solid rgba(255,60,60,.5);display:flex;align-items:center;justify-content:center;font-size:28px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
+    #joyGasBtn{width:80px;height:80px;border-radius:50%;background:rgba(60,220,110,.2);border:2.5px solid rgba(60,220,110,.55);display:flex;align-items:center;justify-content:center;font-size:36px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
   </style>
 </head>
 <body>
@@ -126,9 +128,14 @@
   <button id="btnRestart">🔄 Jugar de nuevo</button>
 </div>
 
-<!-- Joystick móvil -->
+<!-- Controles móvil -->
 <div id="joystickArea">
-  <div id="joyBase"><div id="joyKnob"></div></div>
+  <!-- Flechas dirección (izquierda) -->
+  <div id="joyLeftBtns">
+    <div id="joyLeftBtn" class="joyArrow">◀</div>
+    <div id="joyRightBtn" class="joyArrow">▶</div>
+  </div>
+  <!-- Gas / Freno / Ítem (derecha) -->
   <div id="joyRightBtns">
     <div id="joyItemBtn">🎁</div>
     <div id="joyPedals">
@@ -730,75 +737,49 @@ const keys={};
 document.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Space'){e.preventDefault();if(state==='racing')activateItem();}else e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.code]=false;});
 
-const joy={active:false,ox:0,oy:0,dx:0,dy:0};
-const JOY_R=44;
+// Estado de cada botón táctil
+const joyLeft={active:false}, joyRight={active:false};
 const joyGas={active:false}, joyBrake={active:false};
 
 function setupTouchControls(){
   if(!isMobile)return;
-  document.getElementById('joystickArea').style.display='block';
-  const base=document.getElementById('joyBase'),knob=document.getElementById('joyKnob');
-  const itemB=document.getElementById('joyItemBtn');
-  const gasB=document.getElementById('joyGasBtn');
-  const brakeB=document.getElementById('joyBrakeBtn');
+  // Los botones se muestran sólo al arrancar la carrera (ver startCountdown)
 
-  // Botón ITEM
-  itemB.addEventListener('touchstart',e=>{e.preventDefault();if(state==='racing')activateItem();},{passive:false});
-
-  // Botón GAS
-  gasB.addEventListener('touchstart',e=>{e.preventDefault();joyGas.active=true;},{passive:false});
-  gasB.addEventListener('touchend',e=>{e.preventDefault();joyGas.active=false;},{passive:false});
-  gasB.addEventListener('touchcancel',()=>{joyGas.active=false;});
-
-  // Botón FRENO
-  brakeB.addEventListener('touchstart',e=>{e.preventDefault();joyBrake.active=true;},{passive:false});
-  brakeB.addEventListener('touchend',e=>{e.preventDefault();joyBrake.active=false;},{passive:false});
-  brakeB.addEventListener('touchcancel',()=>{joyBrake.active=false;});
-
-  // Joystick fijo (sólo giro, base no se mueve)
-  const rightIds=new Set([itemB.id,gasB.id,brakeB.id,'joyRightBtns','joyPedals']);
-  document.addEventListener('touchstart',e=>{
-    const tgt=e.target;if(rightIds.has(tgt.id)||tgt.closest('#joyRightBtns'))return;
-    const t=e.touches[0];if(t.clientX<window.innerWidth*0.6)onJoyStart(e);
-  },{passive:false});
-  document.addEventListener('touchmove',e=>{if(joy.active){e.preventDefault();onJoyMove(e);}},{passive:false});
-  document.addEventListener('touchend',e=>{if(joy.active)onJoyEnd();},{passive:false});
-  document.addEventListener('touchcancel',e=>{if(joy.active)onJoyEnd();},{passive:false});
-
-  function onJoyStart(e){
-    const t=e.touches[0];if(t.clientX>=window.innerWidth*0.6)return;
-    e.preventDefault();joy.active=true;joy.ox=t.clientX;joy.oy=t.clientY;joy.dx=0;joy.dy=0;
-    // Base FIJA — sólo el knob se mueve
-    base.style.opacity='0.75';
-    knob.style.transition='none';knob.style.transform='translate(-50%,-50%)';
+  // Helper: registra touchstart/end/cancel sobre un elemento
+  function btn(id, obj){
+    const el=document.getElementById(id);if(!el)return;
+    el.addEventListener('touchstart',e=>{e.preventDefault();if(state==='racing'||state==='countdown')obj.active=true;},{passive:false});
+    el.addEventListener('touchend',  e=>{e.preventDefault();obj.active=false;},{passive:false});
+    el.addEventListener('touchcancel',()=>{obj.active=false;});
   }
-  function onJoyMove(e){
-    let t=null;for(let i=0;i<e.touches.length;i++){if(e.touches[i].clientX<window.innerWidth*0.6){t=e.touches[i];break;}}
-    if(!t)return;
-    const rawX=t.clientX-joy.ox,rawY=t.clientY-joy.oy;
-    const dist=Math.sqrt(rawX*rawX+rawY*rawY),cl=Math.min(dist,JOY_R),ang=Math.atan2(rawY,rawX);
-    joy.dx=Math.cos(ang)*cl/JOY_R;joy.dy=Math.sin(ang)*cl/JOY_R;
-    // El knob se mueve dentro del círculo fijo
-    const bRect=base.getBoundingClientRect();
-    const bCx=bRect.left+bRect.width/2,bCy=bRect.top+bRect.height/2;
-    const kx=Math.cos(ang)*cl,ky=Math.sin(ang)*cl;
-    knob.style.transform=`translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-  }
-  function onJoyEnd(){
-    joy.active=false;joy.dx=0;joy.dy=0;
-    knob.style.transition='transform .15s';knob.style.transform='translate(-50%,-50%)';
-    base.style.opacity='0.55';
-  }
+  btn('joyLeftBtn',  joyLeft);
+  btn('joyRightBtn', joyRight);
+  btn('joyGasBtn',   joyGas);
+  btn('joyBrakeBtn', joyBrake);
+
+  // Botón ÍTEM (dispara acción, no es hold)
+  const itemEl=document.getElementById('joyItemBtn');
+  if(itemEl) itemEl.addEventListener('touchstart',e=>{e.preventDefault();if(state==='racing')activateItem();},{passive:false});
+}
+
+function showMobileControls(visible){
+  if(!isMobile)return;
+  document.getElementById('joystickArea').style.display=visible?'block':'none';
+  // Resetear todos los botones al ocultar
+  if(!visible){joyLeft.active=false;joyRight.active=false;joyGas.active=false;joyBrake.active=false;}
 }
 
 function getInput(){
   if(isMobile){
-    // En móvil: gas/freno con botones, giro con joystick
-    const fwd=joyGas.active?1:joyBrake.active?-0.7:0;
-    const turn=joy.active?-joy.dx:0;
-    return{fwd,turn};
+    return{
+      fwd : joyGas.active?1:joyBrake.active?-0.7:0,
+      turn: joyLeft.active?1:joyRight.active?-1:0
+    };
   }
-  return{fwd:(keys['ArrowUp']||keys['KeyW'])?1:(keys['ArrowDown']||keys['KeyS'])?-1:0,turn:(keys['ArrowLeft']||keys['KeyA'])?1:(keys['ArrowRight']||keys['KeyD'])?-1:0};
+  return{
+    fwd :(keys['ArrowUp']  ||keys['KeyW'])?1:(keys['ArrowDown'] ||keys['KeyS'])?-1:0,
+    turn:(keys['ArrowLeft']||keys['KeyA'])?1:(keys['ArrowRight']||keys['KeyD'])?-1:0
+  };
 }
 
 // ══════════════════════════════════════════
@@ -1061,6 +1042,7 @@ function buildMenu(){
   document.getElementById('btnRestart').addEventListener('click',()=>{
     document.getElementById('podiumScreen').style.display='none';
     document.getElementById('hud').style.display='none';
+    showMobileControls(false); // ocultar controles al volver al menú
     buildMenu();
     document.getElementById('menu').style.display='flex';
     state='menu';playerItem=null;updateItemHUD();
@@ -1084,6 +1066,7 @@ function clearScene(){
 // ══════════════════════════════════════════
 function startCountdown(){
   state='countdown';
+  showMobileControls(true); // mostrar flechas y botones al iniciar
   const el=document.getElementById('countdown');el.style.display='block';el.style.color='#fff';
   let n=3;el.textContent=n;playBeep(440,0.25,0.4);
   const tick=setInterval(()=>{
@@ -1161,6 +1144,7 @@ function resolveRace(){
 
   document.getElementById('podiumScreen').style.display='flex';
   document.getElementById('hud').style.display='none';
+  showMobileControls(false); // ocultar controles en pantalla de podio
 }
 
 // ══════════════════════════════════════════
