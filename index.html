@@ -181,6 +181,7 @@ const TRACKS = [
     sky:{bg:0xE8C98A,fog:0xE3BE78,ambInt:0.85,sunInt:1.6,sunPos:[40,120,30],sunCol:0xfff2c0},
     kerbA:0xCC5500,kerbB:0xfff2d0,groundCol:0xD9B872,
     treeMinR:124, hasObstacles:true, treeType:'cactus',
+    hills:3.6, movingDunes:true,
   },
 ];
 
@@ -306,7 +307,18 @@ function playFinishFanfare(){
 //  PISTA
 // ══════════════════════════════════════════
 const TRACK_W=13, TRACK_SEGS=300;
-let WAYPTS=[], trackCurve, currentTrackCfg;
+let WAYPTS=[], trackCurve, currentTrackCfg, WAYPT_H=[];
+
+// Altura del terreno a lo largo de la pista (relieve / altibajos)
+function computeTrackHeights(amp){
+  WAYPT_H=[]; const n=WAYPTS.length;
+  for(let i=0;i<n;i++){
+    const phi=(i/n)*Math.PI*2;
+    const w=0.5*Math.sin(phi*3)+0.32*Math.sin(phi*5+1.3)+0.18*Math.sin(phi*2+0.6); // periódico en el lazo
+    WAYPT_H.push(amp*(0.5+0.5*w)); // rango ~0..amp (siempre sobre el suelo)
+  }
+}
+function trackH(idx){ const n=WAYPT_H.length; return n?WAYPT_H[((idx%n)+n)%n]:0; }
 
 // Finish line
 let FINISH_A=new THREE.Vector3(),FINISH_B=new THREE.Vector3(),FINISH_FWD=new THREE.Vector3();
@@ -316,6 +328,7 @@ function buildTrack(trackCfg){
   const pts=trackCfg.pts.map(([x,z])=>new THREE.Vector3(x,0,z));
   trackCurve=new THREE.CatmullRomCurve3(pts,true,'catmullrom',0.5);
   WAYPTS=trackCurve.getPoints(TRACK_SEGS);
+  computeTrackHeights(trackCfg.hills||0);
 
   const n=WAYPTS.length;
   const verts=[],uvs=[],normals=[],indices=[];
@@ -325,8 +338,8 @@ function buildTrack(trackCfg){
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const L=p.clone().addScaledVector(right,-TRACK_W/2);
     const R=p.clone().addScaledVector(right, TRACK_W/2);
-    const u=(i/n)*10;
-    verts.push(L.x,0.02,L.z, R.x,0.02,R.z);
+    const u=(i/n)*10, hy=trackH(i)+0.02;
+    verts.push(L.x,hy,L.z, R.x,hy,R.z);
     uvs.push(0,u,1,u); normals.push(0,1,0,0,1,0);
   }
   for(let i=0;i<n;i++){
@@ -348,7 +361,7 @@ function buildTrack(trackCfg){
     const p=WAYPTS[i],nx=WAYPTS[(i+1)%n];
     const dir=new THREE.Vector3().subVectors(nx,p).normalize();
     const line=new THREE.Mesh(new THREE.PlaneGeometry(0.28,2),lineMat);
-    line.rotation.x=-Math.PI/2; line.position.set(p.x,0.03,p.z);
+    line.rotation.x=-Math.PI/2; line.position.set(p.x,trackH(i)+0.03,p.z);
     line.rotation.y=Math.atan2(dir.x,dir.z); scene.add(line);
   }
 
@@ -362,7 +375,7 @@ function buildTrack(trackCfg){
     for(const side of[-1,1]){
       const pos=p.clone().addScaledVector(right,side*(TRACK_W/2+0.6));
       const k=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.22,1.2),mat);
-      k.position.set(pos.x,0.11,pos.z); scene.add(k);
+      k.position.set(pos.x,trackH(i)+0.11,pos.z); scene.add(k);
     }
   }
 
@@ -371,7 +384,7 @@ function buildTrack(trackCfg){
   const sx=sc.getContext('2d');
   for(let i=0;i<8;i++){sx.fillStyle=i%2===0?'#000':'#fff';sx.fillRect(i*32,0,32,32);sx.fillStyle=i%2===0?'#fff':'#000';sx.fillRect(i*32,32,32,32);}
   const startMesh=new THREE.Mesh(new THREE.PlaneGeometry(TRACK_W,3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc)}));
-  startMesh.rotation.x=-Math.PI/2; startMesh.position.set(WAYPTS[0].x,0.04,WAYPTS[0].z); scene.add(startMesh);
+  startMesh.rotation.x=-Math.PI/2; startMesh.position.set(WAYPTS[0].x,trackH(0)+0.04,WAYPTS[0].z); scene.add(startMesh);
 
   setupFinishLine();
 }
@@ -388,20 +401,21 @@ function setupFinishLine(){
 function buildFinishArch(){
   const mid=FINISH_A.clone().lerp(FINISH_B,0.5);
   const archAngle=Math.atan2(FINISH_B.x-FINISH_A.x,FINISH_B.z-FINISH_A.z);
+  const h0=trackH(0);
   const redMat=new THREE.MeshLambertMaterial({color:0xFF2222});
   [FINISH_A,FINISH_B].forEach(p=>{
     const post=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,9,8),redMat);
-    post.position.set(p.x,4.5,p.z); scene.add(post);
+    post.position.set(p.x,h0+4.5,p.z); scene.add(post);
   });
   const cross=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,TRACK_W*1.1+2,8),redMat);
-  cross.rotation.z=Math.PI/2; cross.rotation.y=archAngle; cross.position.set(mid.x,9,mid.z); scene.add(cross);
+  cross.rotation.z=Math.PI/2; cross.rotation.y=archAngle; cross.position.set(mid.x,h0+9,mid.z); scene.add(cross);
   const bc=document.createElement('canvas');bc.width=256;bc.height=80;
   const bx=bc.getContext('2d');
   bx.fillStyle='#FFD700';bx.fillRect(0,0,256,80);
   bx.fillStyle='#000';bx.font='bold 48px Arial Black';bx.textAlign='center';bx.textBaseline='middle';
   bx.fillText('🏁 META 🏁',128,40);
   const bm=new THREE.Mesh(new THREE.PlaneGeometry(TRACK_W*1.0,2),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(bc),side:THREE.DoubleSide}));
-  bm.position.set(mid.x,9.5,mid.z); bm.rotation.y=archAngle; scene.add(bm);
+  bm.position.set(mid.x,h0+9.5,mid.z); bm.rotation.y=archAngle; scene.add(bm);
 }
 
 function linesCross(ax,az,bx,bz,cx,cz,dx,dz){
@@ -447,6 +461,7 @@ function checkLapCrossing(kart){
 //  ENTORNO
 // ══════════════════════════════════════════
 let obstacleObjects=[];
+let dunes=[];
 
 function makeTreeTexture(){
   const c=document.createElement('canvas');c.width=128;c.height=256;
@@ -533,7 +548,7 @@ function buildEnvironment(trackCfg){
 // ══════════════════════════════════════════
 //  OBSTÁCULOS EN PISTA
 // ══════════════════════════════════════════
-function createTireStack(x,z){
+function createTireStack(x,z,y=0){
   const group=new THREE.Group();
   const tireMat=new THREE.MeshLambertMaterial({color:0x111111});
   const stripeMat=new THREE.MeshLambertMaterial({color:0xFF5500});
@@ -549,12 +564,12 @@ function createTireStack(x,z){
   cone.position.y=2.05; group.add(cone);
   const coneStripe=new THREE.Mesh(new THREE.CylinderGeometry(0.23,0.23,0.1,8),new THREE.MeshLambertMaterial({color:0xffffff}));
   coneStripe.position.y=1.78; group.add(coneStripe);
-  group.position.set(x,0,z);
+  group.position.set(x,y,z);
   scene.add(group);
   obstacleObjects.push({type:'llanta',mesh:group,x,z,r:0.88});
 }
 
-function createPothole(x,z){
+function createPothole(x,z,y=0){
   const c=document.createElement('canvas');c.width=c.height=256;
   const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
   // Sombra exterior
@@ -574,11 +589,11 @@ function createPothole(x,z){
   // Señal amarilla de advertencia
   ctx.fillStyle='rgba(255,220,0,0.9)';ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⚠',128,22);
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(4.4,3.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,0.03,z);scene.add(mesh);
+  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y+0.03,z);scene.add(mesh);
   obstacleObjects.push({type:'hueco',mesh,x,z,r:1.7});
 }
 
-function createOilSlick(x,z){
+function createOilSlick(x,z,y=0){
   const c=document.createElement('canvas');c.width=c.height=256;
   const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
   // Base iridiscente del aceite
@@ -596,7 +611,7 @@ function createOilSlick(x,z){
   ctx.fillStyle='rgba(90,255,140,0.14)';ctx.beginPath();ctx.ellipse(142,88,24,14,0.8,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='rgba(255,230,80,0.12)';ctx.beginPath();ctx.ellipse(108,158,28,16,-0.3,0,Math.PI*2);ctx.fill();
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(6.2,4.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,0.028,z);scene.add(mesh);
+  mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y+0.028,z);scene.add(mesh);
   obstacleObjects.push({type:'aceite',mesh,x,z,r:2.3});
 }
 
@@ -610,7 +625,7 @@ function buildTrackObstacles(){
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const side=i%2===0?1:-1;
     const pos=p.clone().addScaledVector(right,side*(TRACK_W/2-2.3));
-    createTireStack(pos.x,pos.z);
+    createTireStack(pos.x,pos.z,trackH(idx));
   });
   // 🕳 Huecos en la superficie de la pista
   [0.12,0.29,0.56,0.79].forEach((frac,i)=>{
@@ -619,7 +634,7 @@ function buildTrackObstacles(){
     const dir=new THREE.Vector3().subVectors(pn,p).normalize();
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const pos=p.clone().addScaledVector(right,(i%2===0?-1:1)*2.2);
-    createPothole(pos.x,pos.z);
+    createPothole(pos.x,pos.z,trackH(idx));
   });
   // 🛢 Manchas de aceite en la pista
   [0.23,0.49,0.74].forEach((frac,i)=>{
@@ -628,8 +643,31 @@ function buildTrackObstacles(){
     const dir=new THREE.Vector3().subVectors(pn,p).normalize();
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const pos=p.clone().addScaledVector(right,(i%2===0?1:-1)*1.6);
-    createOilSlick(pos.x,pos.z);
+    createOilSlick(pos.x,pos.z,trackH(idx));
   });
+  buildMovingDunes();
+}
+
+// 🏜️ Dunas de arena que cruzan la pista y golpean a los karts
+function buildMovingDunes(){
+  dunes.forEach(d=>{if(d.mesh)scene.remove(d.mesh);}); dunes=[];
+  if(!currentTrackCfg||!currentTrackCfg.movingDunes) return;
+  const sandMat=new THREE.MeshLambertMaterial({color:0xC9A35A});
+  [0.16,0.41,0.66,0.90].forEach((frac,i)=>{
+    const idx=Math.floor(frac*TRACK_SEGS);
+    const p=WAYPTS[idx],pn=WAYPTS[(idx+2)%TRACK_SEGS];
+    const dir=new THREE.Vector3().subVectors(pn,p).normalize();
+    const right=new THREE.Vector3(-dir.z,0,dir.x);
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(2.6,12,9),sandMat);
+    mesh.scale.y=0.5; mesh.castShadow=!isMobile; scene.add(mesh);
+    dunes.push({mesh,bx:p.x,bz:p.z,rx:right.x,rz:right.z,range:TRACK_W*0.62,phase:i*1.7,speed:0.7+i*0.13,baseY:trackH(idx),r:2.7});
+  });
+}
+function updateDunes(t){
+  for(const d of dunes){
+    const off=Math.sin(t*0.0006*d.speed+d.phase)*d.range;
+    d.mesh.position.set(d.bx+d.rx*off, d.baseY+0.7, d.bz+d.rz*off);
+  }
 }
 
 // ══════════════════════════════════════════
@@ -650,17 +688,18 @@ function buildItemBoxes(){
     const dir=new THREE.Vector3().subVectors(nx,p).normalize();
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const pos=p.clone().addScaledVector(right,ii%2===0?-2.5:2.5);
+    const baseY=trackH(wpIdx)+1.0;
     const group=new THREE.Group();
     const cube=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.4,1.4),mat); cube.castShadow=true; group.add(cube);
     const glow=new THREE.Mesh(new THREE.SphereGeometry(0.9,8,8),new THREE.MeshBasicMaterial({color:0xFFFFAA,transparent:true,opacity:0.3})); group.add(glow);
-    group.position.set(pos.x,1.0,pos.z); scene.add(group);
-    itemBoxes.push({group,active:true,respawnTimer:0,pos:pos.clone()});
+    group.position.set(pos.x,baseY,pos.z); scene.add(group);
+    itemBoxes.push({group,active:true,respawnTimer:0,pos:pos.clone(),baseY});
   });
 }
 function updateItemBoxes(dt){
   const t=Date.now()*0.002;
   itemBoxes.forEach(box=>{
-    if(box.active){box.group.rotation.y+=0.02;box.group.position.y=1.0+Math.sin(t+box.pos.x)*0.15;}
+    if(box.active){box.group.rotation.y+=0.02;box.group.position.y=box.baseY+Math.sin(t+box.pos.x)*0.15;}
     else{box.respawnTimer-=dt;if(box.respawnTimer<=0){box.active=true;box.group.visible=true;}}
   });
 }
@@ -759,11 +798,12 @@ function spawnKarts(playerIdx){
   const pers=[{lookAhead:5,aggression:0.60,sideSpeed:0.025,mistakeInterval:4},{lookAhead:12,aggression:0.50,sideSpeed:0.010,mistakeInterval:10},{lookAhead:7,aggression:0.55,sideSpeed:0.040,mistakeInterval:6}];
   order.forEach((charIdx,slot)=>{
     const kart=createKart(charIdx); kart.userData.isPlayer=slot===0;
-    if(slot>0){const p=pers[slot-1];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=0.82;kart.userData.baseMaxSpeed*=0.82;}
+    if(slot>0){const p=pers[slot-1];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=0.90;kart.userData.baseMaxSpeed*=0.90;}
     const t=slot*0.018,pos=trackCurve.getPoint(t),tan=trackCurve.getTangent(t);
     const right=new THREE.Vector3(-tan.z,0,tan.x),off=(slot%2===0?-1:1)*2.8;
-    kart.position.set(pos.x+right.x*off,0,pos.z+right.z*off);
-    kart.userData.angle=Math.atan2(tan.x,tan.z);kart.userData.wpIdx=Math.floor(t*TRACK_SEGS);
+    const wp0=Math.floor(t*TRACK_SEGS);
+    kart.position.set(pos.x+right.x*off,trackH(wp0),pos.z+right.z*off);
+    kart.userData.angle=Math.atan2(tan.x,tan.z);kart.userData.wpIdx=wp0;
     karts.push(kart);scene.add(kart);
   });
   playerKart=karts[0];
@@ -830,6 +870,15 @@ function isOnGrass(kart){
   return min>TRACK_W*0.65;
 }
 
+// Ajusta altura (relieve) e inclinación del kart según la pendiente de la pista
+function applyTerrain(kart){
+  const u=kart.userData;
+  const targetY=trackH(u.wpIdx);
+  kart.position.y+=(targetY-kart.position.y)*0.25;
+  const slope=trackH(u.wpIdx+3)-trackH(u.wpIdx-3);
+  kart.rotation.x=-slope*0.06;
+}
+
 function updatePlayerKart(dt){
   const u=playerKart.userData;if(u.finished)return;
   if(u.oilCooldown>0)u.oilCooldown-=dt;
@@ -846,7 +895,7 @@ function updatePlayerKart(dt){
   playerKart.rotation.z=u.spinTimer>0?Math.sin(Date.now()*0.03)*0.3:(-inp.turn*0.08*Math.min(1,Math.abs(u.speed)/u.maxSpeed));
   playerKart.children.forEach(c=>{if(c.userData.isWheel)c.rotation.x+=u.speed*9;});
   if(u.boostTimer>0){u.boostTimer-=dt;if(u.boostTimer<=0){u.maxSpeed=u.baseMaxSpeed;document.getElementById('boostBar').style.display='none';}else{document.getElementById('boostFill').style.width=(u.boostTimer/3*100)+'%';}}
-  advanceWaypoint(playerKart);checkLapCrossing(playerKart);updateEngineSound(u.speed);
+  advanceWaypoint(playerKart);checkLapCrossing(playerKart);applyTerrain(playerKart);updateEngineSound(u.speed);
 }
 
 function updateAI(kart,dt){
@@ -870,7 +919,7 @@ function updateAI(kart,dt){
   if(isOnGrass(kart))u.speed*=0.95;
   kart.position.x+=Math.sin(u.angle)*u.speed;kart.position.z+=Math.cos(u.angle)*u.speed;
   kart.rotation.y=u.angle;kart.children.forEach(c=>{if(c.userData.isWheel)c.rotation.x+=u.speed*9;});
-  advanceWaypoint(kart);checkLapCrossing(kart);
+  advanceWaypoint(kart);checkLapCrossing(kart);applyTerrain(kart);
 }
 
 // ══════════════════════════════════════════
@@ -930,6 +979,21 @@ function checkObstacleCollisions(){
             playCollisionSound(); lastCollSnd=now; vib([60,40,60,40,60]);
             showObstaclePopup('🛢️ ¡ACEITE!');
           }
+        }
+      }
+    });
+    // 🏜️ Dunas móviles: empujan y frenan al kart
+    dunes.forEach(d=>{
+      const dx=kart.position.x-d.mesh.position.x,dz=kart.position.z-d.mesh.position.z;
+      const dist=Math.sqrt(dx*dx+dz*dz),min=d.r+0.9;
+      if(dist<min&&dist>0.01){
+        const nx=dx/dist,nz=dz/dist;
+        kart.position.x=d.mesh.position.x+nx*min; kart.position.z=d.mesh.position.z+nz*min;
+        kart.userData.speed*=0.5;
+        kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.45);
+        if(kart.userData.isPlayer&&now-lastCollSnd>350){
+          playCollisionSound(); lastCollSnd=now; vib([50,30,50]);
+          showObstaclePopup('🏜️ ¡DUNA!');
         }
       }
     });
@@ -999,7 +1063,7 @@ const smoothCam=new THREE.Vector3();
 function updateCamera(){
   if(!playerKart)return;
   const u=playerKart.userData;
-  const target=new THREE.Vector3(playerKart.position.x+Math.sin(u.angle)*-9,5.5,playerKart.position.z+Math.cos(u.angle)*-9);
+  const target=new THREE.Vector3(playerKart.position.x+Math.sin(u.angle)*-9,playerKart.position.y+5.5,playerKart.position.z+Math.cos(u.angle)*-9);
   smoothCam.lerp(target,0.09);camera.position.copy(smoothCam);
   camera.lookAt(playerKart.position.x,playerKart.position.y+1.2,playerKart.position.z);
 }
@@ -1097,7 +1161,7 @@ function clearScene(){
     if(obj===ambientLight||obj===sun)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
-  obstacleObjects=[];_treeTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
+  obstacleObjects=[];dunes=[];_treeTex=null;_cactusTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
 }
 
 // ══════════════════════════════════════════
@@ -1194,12 +1258,13 @@ function animate(t){
   requestAnimationFrame(animate);
   const dt=Math.min((t-lastT)/1000,0.05);lastT=t;
   if(state==='racing'){
+    updateDunes(t);
     updatePlayerKart(dt);
     karts.forEach(k=>{if(!k.userData.isPlayer)updateAI(k,dt);});
     checkKartCollisions();checkObstacleCollisions();
     updateItemBoxes(dt);updateProjectiles(dt);
     updateCamera();updateHUD();
-  }else if(state==='countdown'){updateCamera();}
+  }else if(state==='countdown'){updateDunes(t);updateCamera();}
   renderer.render(scene,camera);
 }
 
