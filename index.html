@@ -174,6 +174,14 @@ const TRACKS = [
     kerbA:0x2244FF,kerbB:0xffffff,groundCol:0x4a7a28,
     treeMinR:112, hasObstacles:true,
   },
+  {
+    name:'Dunas del Desierto', emoji:'🏜️', desc:'Pista larga y sinuosa · obstáculos · cactus',
+    pts:[[0,-108],[40,-104],[74,-90],[98,-64],[100,-32],[84,-8],[102,18],[96,52],[72,78],[40,90],
+         [8,84],[-26,94],[-60,86],[-88,64],[-100,34],[-82,10],[-100,-16],[-94,-48],[-106,-76],[-74,-98],[-38,-106]],
+    sky:{bg:0xE8C98A,fog:0xE3BE78,ambInt:0.85,sunInt:1.6,sunPos:[40,120,30],sunCol:0xfff2c0},
+    kerbA:0xCC5500,kerbB:0xfff2d0,groundCol:0xD9B872,
+    treeMinR:124, hasObstacles:true, treeType:'cactus',
+  },
 ];
 
 const SKY_PRESET_REFS = TRACKS.map(t=>t.sky);
@@ -454,25 +462,56 @@ function makeTreeTexture(){
 }
 let _treeTex=null;
 
-function addBillboardTree(x,z,scale){
-  if(!_treeTex)_treeTex=makeTreeTexture();
-  const mat=new THREE.MeshBasicMaterial({map:_treeTex,transparent:true,alphaTest:0.15,side:THREE.DoubleSide,depthWrite:false});
+function makeCactusTexture(){
+  const c=document.createElement('canvas');c.width=128;c.height=256;
+  const ctx=c.getContext('2d'); ctx.clearRect(0,0,128,256);
+  const bg=ctx.createLinearGradient(50,0,78,0);
+  bg.addColorStop(0,'#1c5e22');bg.addColorStop(0.45,'#3f9a45');bg.addColorStop(0.55,'#46aa4c');bg.addColorStop(1,'#1c5e22');
+  ctx.fillStyle=bg; ctx.lineWidth=1;
+  const cap=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();};
+  // Tronco principal
+  ctx.fillRect(54,46,20,202); cap(64,46,10);
+  // Brazo izquierdo (sube en L)
+  ctx.fillRect(34,150,20,16); ctx.fillRect(34,104,16,62); cap(42,104,8);
+  // Brazo derecho (sube en L, más alto)
+  ctx.fillRect(74,124,22,15); ctx.fillRect(80,78,16,62); cap(88,78,8);
+  // Surcos verticales (sombra)
+  ctx.strokeStyle='rgba(10,50,12,0.5)';
+  [60,68].forEach(x=>{ctx.beginPath();ctx.moveTo(x,52);ctx.lineTo(x,244);ctx.stroke();});
+  // Brillo lateral
+  ctx.strokeStyle='rgba(150,235,120,0.4)';ctx.beginPath();ctx.moveTo(57,52);ctx.lineTo(57,244);ctx.stroke();
+  // Espinas
+  ctx.strokeStyle='rgba(235,235,200,0.6)';ctx.lineWidth=1;
+  for(let y=60;y<240;y+=14){ctx.beginPath();ctx.moveTo(55,y);ctx.lineTo(51,y-3);ctx.moveTo(73,y);ctx.lineTo(77,y-3);ctx.stroke();}
+  // Flores en las puntas
+  ctx.fillStyle='#ff5fa2'; cap(64,44,4); cap(88,76,3.5); cap(42,102,3);
+  return new THREE.CanvasTexture(c);
+}
+let _cactusTex=null;
+
+function addBillboard(x,z,scale,kind){
+  let tex;
+  if(kind==='cactus'){ if(!_cactusTex)_cactusTex=makeCactusTexture(); tex=_cactusTex; }
+  else { if(!_treeTex)_treeTex=makeTreeTexture(); tex=_treeTex; }
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.15,side:THREE.DoubleSide,depthWrite:false});
   const h=9*scale,w=5*scale;
   const geo=new THREE.PlaneGeometry(w,h);
   const group=new THREE.Group();
   [0,Math.PI/2].forEach(ry=>{const pl=new THREE.Mesh(geo,mat);pl.rotation.y=ry;group.add(pl);});
   group.position.set(x,h/2,z); scene.add(group);
-  // Árboles sólo decorativos (sin colisión)
+  // Decoración sólo visual (sin colisión)
 }
+function addBillboardTree(x,z,scale){ addBillboard(x,z,scale,'tree'); }
 
 function buildEnvironment(trackCfg){
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({color:trackCfg.groundCol}));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=!isMobile; scene.add(ground);
 
   const minR=trackCfg.treeMinR||78;
+  const deco=trackCfg.treeType||'tree';
   for(let i=0;i<(isMobile?40:90);i++){
     const angle=Math.random()*Math.PI*2,r=minR+Math.random()*80;
-    addBillboardTree(Math.cos(angle)*r,Math.sin(angle)*r,0.7+Math.random()*0.8);
+    addBillboard(Math.cos(angle)*r,Math.sin(angle)*r,0.7+Math.random()*0.8,deco);
   }
 
   const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff});
