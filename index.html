@@ -181,7 +181,7 @@ const TRACKS = [
     sky:{bg:0xE8C98A,fog:0xE3BE78,ambInt:0.85,sunInt:1.6,sunPos:[40,120,30],sunCol:0xfff2c0},
     kerbA:0xCC5500,kerbB:0xfff2d0,groundCol:0xD9B872,
     treeMinR:124, hasObstacles:true, treeType:'cactus',
-    hills:3.6, movingDunes:true,
+    hills:7.0, movingDunes:true,
   },
 ];
 
@@ -665,7 +665,7 @@ function buildMovingDunes(){
 }
 function updateDunes(t){
   for(const d of dunes){
-    const off=Math.sin(t*0.0006*d.speed+d.phase)*d.range;
+    const off=Math.sin(t*0.0015*d.speed+d.phase)*d.range;
     d.mesh.position.set(d.bx+d.rx*off, d.baseY+0.7, d.bz+d.rz*off);
   }
 }
@@ -795,10 +795,10 @@ function spawnKarts(playerIdx){
   bananas.forEach(b=>scene.remove(b.mesh));bananas=[];
   shells.forEach(s=>scene.remove(s.mesh));shells=[];
   const order=[playerIdx,...[0,1,2,3].filter(i=>i!==playerIdx)];
-  const pers=[{lookAhead:5,aggression:0.60,sideSpeed:0.025,mistakeInterval:4},{lookAhead:12,aggression:0.50,sideSpeed:0.010,mistakeInterval:10},{lookAhead:7,aggression:0.55,sideSpeed:0.040,mistakeInterval:6}];
+  const pers=[{lookAhead:5,aggression:0.82,sideSpeed:0.025,mistakeInterval:6},{lookAhead:12,aggression:0.74,sideSpeed:0.010,mistakeInterval:14},{lookAhead:7,aggression:0.78,sideSpeed:0.040,mistakeInterval:9}];
   order.forEach((charIdx,slot)=>{
     const kart=createKart(charIdx); kart.userData.isPlayer=slot===0;
-    if(slot>0){const p=pers[slot-1];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=0.90;kart.userData.baseMaxSpeed*=0.90;}
+    if(slot>0){const p=pers[slot-1];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=1.04;kart.userData.baseMaxSpeed*=1.04;}
     const t=slot*0.018,pos=trackCurve.getPoint(t),tan=trackCurve.getTangent(t);
     const right=new THREE.Vector3(-tan.z,0,tan.x),off=(slot%2===0?-1:1)*2.8;
     const wp0=Math.floor(t*TRACK_SEGS);
