@@ -168,8 +168,8 @@ const TRACKS = [
     treeMinR:78, hasObstacles:false,
   },
   {
-    name:'Circuito Rápido', emoji:'🌅', desc:'Pista larga · obstáculos · atardecer',
-    pts:[[0,-90],[30,-88],[65,-72],[88,-42],[92,-5],[80,32],[55,62],[20,80],[-20,80],[-55,62],[-80,32],[-92,-5],[-88,-42],[-65,-72],[-30,-88]],
+    name:'Circuito Rápido', emoji:'🌅', desc:'Pista compleja · obstáculos · atardecer',
+    pts:[[0,-88],[28,-80],[58,-76],[80,-56],[88,-28],[72,-4],[90,20],[82,50],[58,72],[28,84],[-8,78],[-38,88],[-68,72],[-90,46],[-84,18],[-100,-8],[-86,-36],[-62,-64],[-28,-84]],
     sky:{bg:0xFF7043,fog:0xFF5533,ambInt:0.45,sunInt:0.9,sunPos:[80,18,-40],sunCol:0xFF6030},
     kerbA:0x2244FF,kerbB:0xffffff,groundCol:0x4a7a28,
     treeMinR:112, hasObstacles:true,
@@ -352,7 +352,7 @@ function buildTrack(trackCfg){
   geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geo.setIndex(indices);
 
-  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x3a3a3a}));
+  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x5a5a5a}));
   mesh.receiveShadow=!isMobile; scene.add(mesh);
 
   // Línea de centro
