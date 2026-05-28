@@ -55,6 +55,8 @@
 
     /* COUNTDOWN */
     #countdown{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(80px,18vw,130px);font-weight:900;color:#fff;text-shadow:4px 4px 0 #000;display:none;z-index:200;pointer-events:none;animation:popIn .45s cubic-bezier(.2,1.5,.5,1);}
+    #wrongWayBanner{position:fixed;top:18%;left:50%;transform:translateX(-50%);background:#cc0000;color:#fff;font-size:clamp(22px,5vw,38px);font-weight:900;letter-spacing:3px;padding:10px 36px;border-radius:12px;border:3px solid #ff4444;box-shadow:0 0 24px rgba(255,0,0,.7);display:none;z-index:180;pointer-events:none;animation:wrongWayBlink 0.55s step-end infinite;}
+    @keyframes wrongWayBlink{0%,100%{opacity:1;}50%{opacity:0.25;}}
     #itemPopup{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:72px;display:none;z-index:150;pointer-events:none;animation:popIn .4s cubic-bezier(.2,1.5,.5,1);}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(2.5);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
 
@@ -105,6 +107,7 @@
 </div>
 <div id="itemPopup">🎁</div>
 <div id="obstaclePopup" style="position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);font-size:54px;display:none;z-index:150;pointer-events:none;animation:popIn .35s cubic-bezier(.2,1.5,.5,1);"></div>
+<div id="wrongWayBanner">⚠ REVERSA ⚠</div>
 <div id="recordFlash">🏆 ¡NUEVO RÉCORD!</div>
 
 <!-- MENU -->
@@ -429,6 +432,17 @@ function linesCross(ax,az,bx,bz,cx,cz,dx,dz){
 
 function advanceWaypoint(kart){
   const u=kart.userData;
+  // Si el kart se alejó mucho del waypoint actual (ej. salió de pista),
+  // buscamos globalmente el waypoint más cercano para re-enganchar.
+  const wpCur=WAYPTS[u.wpIdx];
+  if(Math.hypot(kart.position.x-wpCur.x,kart.position.z-wpCur.z)>TRACK_W*2.8){
+    let minD=Infinity,best=u.wpIdx;
+    for(let i=0;i<WAYPTS.length;i++){
+      const d=Math.hypot(kart.position.x-WAYPTS[i].x,kart.position.z-WAYPTS[i].z);
+      if(d<minD){minD=d;best=i;}
+    }
+    if(minD<TRACK_W*1.4) u.wpIdx=best;
+  }
   for(let i=0;i<4;i++){
     const wp=WAYPTS[u.wpIdx];
     const dx=kart.position.x-wp.x,dz=kart.position.z-wp.z;
@@ -1071,6 +1085,17 @@ function updateCamera(){
 // ══════════════════════════════════════════
 //  HUD
 // ══════════════════════════════════════════
+function isWrongWay(){
+  if(!playerKart)return false;
+  const u=playerKart.userData;
+  if(Math.abs(u.speed)<0.04)return false;
+  const wp=WAYPTS[u.wpIdx],wpN=WAYPTS[(u.wpIdx+1)%TRACK_SEGS];
+  const fwdX=wpN.x-wp.x,fwdZ=wpN.z-wp.z;
+  const len=Math.sqrt(fwdX*fwdX+fwdZ*fwdZ);
+  const dot=(Math.sin(u.angle)*fwdX+Math.cos(u.angle)*fwdZ)/len;
+  return dot<-0.45;
+}
+
 function updateHUD(){
   if(!playerKart)return;
   const u=playerKart.userData;
@@ -1081,6 +1106,7 @@ function updateHUD(){
   let pos=1;const myScore=u.lap*TRACK_SEGS+u.wpIdx;
   karts.forEach(k=>{if(k!==playerKart&&k.userData.lap*TRACK_SEGS+k.userData.wpIdx>myScore)pos++;});
   document.getElementById('posBox').textContent=pos+'°';
+  document.getElementById('wrongWayBanner').style.display=isWrongWay()?'block':'none';
   drawMinimap();
   karts.forEach(kart=>{kart.children.forEach(c=>{if(c.userData.isNameTag)c.lookAt(camera.position);});});
   checkItemPickup();
