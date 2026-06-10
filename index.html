@@ -149,6 +149,21 @@
 </div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"}}</script>
+<script>
+// ── Auto-actualización: si el servidor tiene una versión más nueva que la
+//    copia en caché, recargar una sola vez (sin URLs ?v=) ──
+(async()=>{
+  try{
+    const last=+sessionStorage.getItem('ck_upd')||0;
+    if(Date.now()-last<120000)return; // evitar bucles de recarga
+    const[cached,fresh]=await Promise.all([
+      fetch(location.pathname).then(r=>r.text()),
+      fetch(location.pathname,{cache:'no-store'}).then(r=>r.text())
+    ]);
+    if(cached!==fresh){sessionStorage.setItem('ck_upd',Date.now());location.reload();}
+  }catch(e){/* sin conexión: seguir con la copia local */}
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
 
