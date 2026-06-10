@@ -795,29 +795,54 @@ function createKart(charIdx){
   const rimMat=new THREE.MeshLambertMaterial({color:0x888888});
 
   const body=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.55,2.6),bodyMat); body.position.y=0.55; body.castShadow=true; group.add(body);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.5,1.1),bodyMat); roof.position.set(0,1.07,-0.1); roof.castShadow=true; group.add(roof);
   const wind=new THREE.Mesh(new THREE.BoxGeometry(1.28,0.45,0.08),new THREE.MeshLambertMaterial({color:0x88ccff,transparent:true,opacity:0.5})); wind.position.set(0,1.02,-0.66); group.add(wind);
   const spoilerPost=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.4,0.1),chromeMat); spoilerPost.position.set(0,0.95,1.1); group.add(spoilerPost);
   const spoiler=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.1,0.4),bodyMat); spoiler.position.set(0,1.18,1.15); group.add(spoiler);
 
-  // Cara en 4 lados
-  const faceTex=makeFaceTexture(ch);
-  const faceMat=new THREE.MeshLambertMaterial({map:faceTex,transparent:true,side:THREE.DoubleSide});
-  const borderMat=new THREE.MeshBasicMaterial({color:ch.color,side:THREE.DoubleSide});
-  const faceGeo=new THREE.CircleGeometry(0.55,32),borderGeo=new THREE.CircleGeometry(0.61,32);
-  [{pos:[0,1.15,-1.32],ry:Math.PI,ox:0,oz:-0.01},{pos:[0,1.15,1.32],ry:0,ox:0,oz:0.01},{pos:[-0.95,1.15,0],ry:-Math.PI/2,ox:-0.01,oz:0},{pos:[0.95,1.15,0],ry:Math.PI/2,ox:0.01,oz:0}]
-  .forEach(({pos:[x,y,z],ry,ox,oz})=>{
-    const border=new THREE.Mesh(borderGeo,borderMat);border.position.set(x,y,z);border.rotation.y=ry;group.add(border);
-    const face=new THREE.Mesh(faceGeo,faceMat);face.position.set(x+ox,y,z+oz);face.rotation.y=ry;face.userData.isFace=true;group.add(face);
+  // ── Piloto 3D: cabeza esférica con la foto envuelta + casco ──
+  const HEAD_R=0.5, headY=1.28, headZ=-0.1;
+  // Textura equirectangular: foto al frente, tono piel alrededor
+  const hC=document.createElement('canvas');hC.width=512;hC.height=256;
+  const hx=hC.getContext('2d');
+  function paintHeadBase(){
+    hx.fillStyle='#e6b98e';hx.fillRect(0,0,512,256);          // piel
+    hx.fillStyle='#6b4226';hx.fillRect(0,0,512,52);            // cabello arriba (asoma bajo el casco)
+  }
+  function drawFront(drawFn){
+    // Zona frontal de la textura (u≈0.5): elipse suave para fundir con la piel
+    hx.save();
+    hx.beginPath();hx.ellipse(256,134,96,98,0,0,Math.PI*2);hx.clip();
+    drawFn(160,36,192,196); // x,y,w,h del rect frontal
+    hx.restore();
+  }
+  paintHeadBase();
+  drawFront((x,y,w,h)=>{ // placeholder: círculo de color con la inicial
+    hx.fillStyle=ch.hex;hx.fillRect(x,y,w,h);
+    hx.fillStyle=ch.color===0xDDDDDD?'#333':'#fff';
+    hx.font='bold 110px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
+    hx.fillText(ch.initial,256,140);
   });
+  const headTex=new THREE.CanvasTexture(hC);headTex.colorSpace=THREE.SRGBColorSpace;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(HEAD_R,24,18),new THREE.MeshLambertMaterial({map:headTex}));
+  head.position.set(0,headY,headZ);
+  head.rotation.y=Math.PI/2; // u=0.5 de la textura mira al frente del kart (-Z)
+  head.castShadow=!isMobile; group.add(head);
+  // Casco brillante del color del personaje (media esfera arriba)
+  const helmet=new THREE.Mesh(
+    new THREE.SphereGeometry(HEAD_R+0.07,24,12,0,Math.PI*2,0,Math.PI*0.42),
+    new THREE.MeshPhongMaterial({color:ch.color,shininess:100,specular:0x999999}));
+  helmet.position.set(0,headY+0.05,headZ); group.add(helmet);
+  // Visera al frente
+  const visor=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.07,0.3),new THREE.MeshPhongMaterial({color:0x222222,shininess:80}));
+  visor.position.set(0,headY+0.34,headZ-0.42); visor.rotation.x=0.25; group.add(visor);
 
-  // Foto real
+  // Foto real envuelta en la cabeza
   const img=new Image(); img.onload=()=>{
-    const size=256,c=document.createElement('canvas');c.width=c.height=size;const ctx=c.getContext('2d');
     const asp=img.width/img.height;let sx,sy,sw,sh;
     if(asp>1){sh=img.height;sw=sh;sx=(img.width-sw)/2;sy=0;}else{sw=img.width;sh=sw;sx=0;sy=img.height*0.05;}
-    ctx.beginPath();ctx.arc(size/2,size/2,size/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,sx,sy,sw,sh,0,0,size,size);
-    const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;faceMat.map=tex;faceMat.needsUpdate=true;
+    paintHeadBase();
+    drawFront((x,y,w,h)=>hx.drawImage(img,sx,sy,sw,sh,x,y,w,h));
+    headTex.needsUpdate=true;
   }; img.src=ch.photo;
 
   // Ruedas
@@ -941,10 +966,27 @@ function isOnGrass(kart){
 // Ajusta altura (relieve) e inclinación del kart según la pendiente de la pista
 function applyTerrain(kart){
   const u=kart.userData;
-  const targetY=trackH(u.wpIdx);
-  kart.position.y+=(targetY-kart.position.y)*0.25;
-  const slope=trackH(u.wpIdx+3)-trackH(u.wpIdx-3);
-  kart.rotation.x=-slope*0.06;
+  // Waypoint más cercano a la POSICIÓN real del kart (wpIdx puede ir adelantado)
+  let best=u.wpIdx,bd=Infinity;
+  for(let o=-25;o<=25;o++){
+    const idx=((u.wpIdx+o)%TRACK_SEGS+TRACK_SEGS)%TRACK_SEGS;
+    const wp=WAYPTS[idx];
+    const dx=kart.position.x-wp.x,dz=kart.position.z-wp.z;
+    const d=dx*dx+dz*dz;
+    if(d<bd){bd=d;best=idx;}
+  }
+  // Interpolar altura proyectando sobre el segmento hacia el siguiente waypoint
+  const a=WAYPTS[best],b=WAYPTS[(best+1)%TRACK_SEGS];
+  const abx=b.x-a.x,abz=b.z-a.z,len2=abx*abx+abz*abz||1;
+  let t=((kart.position.x-a.x)*abx+(kart.position.z-a.z)*abz)/len2;
+  t=Math.max(0,Math.min(1,t));
+  let targetY=trackH(best)*(1-t)+trackH(best+1)*t;
+  // Fuera de la pista la altura baja gradualmente al nivel del suelo
+  const dist=Math.sqrt(bd),half=TRACK_W*0.55;
+  if(dist>half) targetY*=Math.max(0,1-(dist-half)/6);
+  kart.position.y+=(targetY-kart.position.y)*0.35;
+  const slope=trackH(best+4)-trackH(best-4);
+  kart.rotation.x=-slope*0.05;
 }
 
 function updatePlayerKart(dt){
