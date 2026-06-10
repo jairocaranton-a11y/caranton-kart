@@ -221,7 +221,8 @@ onResize(); window.addEventListener('resize',onResize);
 // ══════════════════════════════════════════
 //  ILUMINACIÓN (dinámica)
 // ══════════════════════════════════════════
-const ambientLight = new THREE.AmbientLight(0xffffff,0.7); scene.add(ambientLight);
+const ambientLight = new THREE.AmbientLight(0xffffff,0.4); scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0x87CEEB,0x3e6b2a,0.55); scene.add(hemiLight);
 const sun = new THREE.DirectionalLight(0xfffae0,1.4); sun.castShadow=!isMobile;
 sun.shadow.camera.near=0.5; sun.shadow.camera.far=300;
 sun.shadow.camera.left=-120; sun.shadow.camera.right=120;
@@ -232,7 +233,9 @@ sun.position.set(60,100,40); scene.add(sun);
 function applySky(sky){
   scene.background = new THREE.Color(sky.bg);
   scene.fog = new THREE.FogExp2(sky.fog,0.007);
-  ambientLight.intensity = sky.ambInt;
+  ambientLight.intensity = sky.ambInt*0.55;
+  hemiLight.color.setHex(sky.bg);
+  hemiLight.intensity = sky.ambInt*0.75;
   sun.intensity = sky.sunInt;
   sun.color.setHex(sky.sunCol);
   sun.position.set(...sky.sunPos);
@@ -326,6 +329,47 @@ function trackH(idx){ const n=WAYPT_H.length; return n?WAYPT_H[((idx%n)+n)%n]:0;
 // Finish line
 let FINISH_A=new THREE.Vector3(),FINISH_B=new THREE.Vector3(),FINISH_FWD=new THREE.Vector3();
 
+function makeAsphaltTexture(){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#5a5a5e';ctx.fillRect(0,0,256,256);
+  // Grano del asfalto (piedritas claras y oscuras)
+  for(let i=0;i<2600;i++){
+    const v=Math.random();
+    ctx.fillStyle=v<0.5?`rgba(0,0,0,${0.12+Math.random()*0.2})`:`rgba(255,255,255,${0.04+Math.random()*0.09})`;
+    const s=Math.random()<0.92?1:2;
+    ctx.fillRect(Math.random()*256,Math.random()*256,s,s);
+  }
+  // Marcas de neumáticos (bandas oscuras donde ruedan los karts)
+  const band=(cx)=>{const g=ctx.createLinearGradient(cx-26,0,cx+26,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(0.5,'rgba(0,0,0,0.22)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(cx-26,0,52,256);};
+  band(70);band(186);
+  // Borde levemente más claro (desgaste)
+  ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(0,0,10,256);ctx.fillRect(246,0,10,256);
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeGrassTexture(baseCol){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  const col=new THREE.Color(baseCol);
+  ctx.fillStyle=`rgb(${col.r*255|0},${col.g*255|0},${col.b*255|0})`;ctx.fillRect(0,0,256,256);
+  // Parches de pasto más claro/oscuro
+  for(let i=0;i<900;i++){
+    const lighter=Math.random()<0.5;
+    ctx.fillStyle=lighter?'rgba(190,235,110,0.10)':'rgba(0,40,0,0.12)';
+    const r=2+Math.random()*7;
+    ctx.beginPath();ctx.ellipse(Math.random()*256,Math.random()*256,r,r*0.55,Math.random()*3,0,Math.PI*2);ctx.fill();
+  }
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(40,40);
+  tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
 function buildTrack(trackCfg){
   currentTrackCfg=trackCfg;
   const pts=trackCfg.pts.map(([x,z])=>new THREE.Vector3(x,0,z));
@@ -355,7 +399,7 @@ function buildTrack(trackCfg){
   geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geo.setIndex(indices);
 
-  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x5a5a5a}));
+  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:makeAsphaltTexture()}));
   mesh.receiveShadow=!isMobile; scene.add(mesh);
 
   // Línea de centro
@@ -533,7 +577,7 @@ function addBillboard(x,z,scale,kind){
 function addBillboardTree(x,z,scale){ addBillboard(x,z,scale,'tree'); }
 
 function buildEnvironment(trackCfg){
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({color:trackCfg.groundCol}));
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({map:makeGrassTexture(trackCfg.groundCol)}));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=!isMobile; scene.add(ground);
 
   const minR=trackCfg.treeMinR||78;
@@ -743,7 +787,7 @@ function lightenHex(hex,pct){const n=parseInt(hex.replace('#',''),16);const r=Ma
 
 function createKart(charIdx){
   const ch=CHARS[charIdx]; const group=new THREE.Group();
-  const bodyMat=new THREE.MeshLambertMaterial({color:ch.color});
+  const bodyMat=new THREE.MeshPhongMaterial({color:ch.color,shininess:80,specular:0x666666});
   const darkMat=new THREE.MeshLambertMaterial({color:0x222222});
   const chromeMat=new THREE.MeshLambertMaterial({color:0xaaaaaa});
   const wheelMat=new THREE.MeshLambertMaterial({color:0x111111});
@@ -785,6 +829,15 @@ function createKart(charIdx){
   // Faros
   const hlMat=new THREE.MeshBasicMaterial({color:0xffffaa});
   [-0.5,0.5].forEach(x=>{const hl=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8),hlMat);hl.position.set(x,0.7,-1.32);group.add(hl);});
+
+  // Sombra suave bajo el kart (siempre, vital en móvil sin shadowmap)
+  const shC=document.createElement('canvas');shC.width=shC.height=128;
+  const shCtx=shC.getContext('2d');
+  const shG=shCtx.createRadialGradient(64,64,8,64,64,62);
+  shG.addColorStop(0,'rgba(0,0,0,0.42)');shG.addColorStop(0.7,'rgba(0,0,0,0.25)');shG.addColorStop(1,'rgba(0,0,0,0)');
+  shCtx.fillStyle=shG;shCtx.beginPath();shCtx.ellipse(64,64,62,46,0,0,Math.PI*2);shCtx.fill();
+  const blob=new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shC),transparent:true,depthWrite:false}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=0.06;group.add(blob);
 
   // Nombre flotante
   const nameTex=makeNameTexture(ch.name);
@@ -1184,7 +1237,7 @@ function clearScene(){
   // Limpiar objetos dinámicos (pista, árboles, etc.)
   const keep=new Set();
   scene.children.forEach(obj=>{
-    if(obj===ambientLight||obj===sun)keep.add(obj);
+    if(obj===ambientLight||obj===sun||obj===hemiLight)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
   obstacleObjects=[];dunes=[];_treeTex=null;_cactusTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
