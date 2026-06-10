@@ -356,10 +356,11 @@ function makeGrassTexture(baseCol){
   const ctx=c.getContext('2d');
   const col=new THREE.Color(baseCol);
   ctx.fillStyle=`rgb(${col.r*255|0},${col.g*255|0},${col.b*255|0})`;ctx.fillRect(0,0,256,256);
-  // Parches de pasto más claro/oscuro
+  // Parches más claros/oscuros derivados del color base (sirve para pasto y arena)
+  const lite=col.clone().multiplyScalar(1.35),dark=col.clone().multiplyScalar(0.6);
   for(let i=0;i<900;i++){
-    const lighter=Math.random()<0.5;
-    ctx.fillStyle=lighter?'rgba(190,235,110,0.10)':'rgba(0,40,0,0.12)';
+    const c2=Math.random()<0.5?lite:dark;
+    ctx.fillStyle=`rgba(${Math.min(255,c2.r*255)|0},${Math.min(255,c2.g*255)|0},${Math.min(255,c2.b*255)|0},0.12)`;
     const r=2+Math.random()*7;
     ctx.beginPath();ctx.ellipse(Math.random()*256,Math.random()*256,r,r*0.55,Math.random()*3,0,Math.PI*2);ctx.fill();
   }
