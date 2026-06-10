@@ -821,21 +821,22 @@ function createKart(charIdx){
   const hx=hC.getContext('2d');
   function paintHeadBase(){
     hx.fillStyle='#e6b98e';hx.fillRect(0,0,512,256);          // piel
-    hx.fillStyle='#6b4226';hx.fillRect(0,0,512,40);            // cabello arriba
   }
-  function drawFront(drawFn){
-    // Zona frontal (u≈0.5): elipse suave para fundir con la piel
-    hx.save();
-    hx.beginPath();hx.ellipse(256,134,88,92,0,0,Math.PI*2);hx.clip();
-    drawFn(168,42,176,184); // x,y,w,h del rect frontal
-    hx.restore();
+  function drawFaces(drawFn){
+    // Cara al frente (u≈0.5) y atrás (u≈0/1, la costura queda atrás)
+    [256,0,512].forEach(cx=>{
+      hx.save();
+      hx.beginPath();hx.ellipse(cx,134,88,92,0,0,Math.PI*2);hx.clip();
+      drawFn(cx-88,42,176,184); // x,y,w,h del rect de la cara
+      hx.restore();
+    });
   }
   paintHeadBase();
-  drawFront((x,y,w,h)=>{ // placeholder: color con la inicial
+  drawFaces((x,y,w,h)=>{ // placeholder: color con la inicial
     hx.fillStyle=ch.hex;hx.fillRect(x,y,w,h);
     hx.fillStyle=ch.color===0xDDDDDD?'#333':'#fff';
     hx.font='bold 100px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
-    hx.fillText(ch.initial,256,140);
+    hx.fillText(ch.initial,x+w/2,140);
   });
   const headTex=new THREE.CanvasTexture(hC);headTex.colorSpace=THREE.SRGBColorSpace;
   // MeshBasic: la cara siempre bien iluminada y nítida
@@ -849,7 +850,7 @@ function createKart(charIdx){
     const asp=img.width/img.height;let sx,sy,sw,sh;
     if(asp>1){sh=img.height;sw=sh;sx=(img.width-sw)/2;sy=0;}else{sw=img.width;sh=sw;sx=0;sy=img.height*0.05;}
     paintHeadBase();
-    drawFront((x,y,w,h)=>hx.drawImage(img,sx,sy,sw,sh,x,y,w,h));
+    drawFaces((x,y,w,h)=>hx.drawImage(img,sx,sy,sw,sh,x,y,w,h));
     headTex.needsUpdate=true;
   }; img.src=ch.photo;
 
