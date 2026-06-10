@@ -814,8 +814,8 @@ function createKart(charIdx){
   const spoilerPost=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.4,0.1),chromeMat); spoilerPost.position.set(0,0.95,1.1); group.add(spoilerPost);
   const spoiler=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.1,0.4),bodyMat); spoiler.position.set(0,1.18,1.15); group.add(spoiler);
 
-  // ── Piloto 3D: cabeza esférica con la foto envuelta + gorrita ──
-  const HEAD_R=0.56, headY=1.32, headZ=-0.1;
+  // ── Piloto 3D: cabeza esférica con la foto envuelta ──
+  const HEAD_R=0.68, headY=1.42, headZ=-0.1;
   // Textura equirectangular: foto grande al frente, tono piel alrededor
   const hC=document.createElement('canvas');hC.width=512;hC.height=256;
   const hx=hC.getContext('2d');
@@ -824,17 +824,17 @@ function createKart(charIdx){
     hx.fillStyle='#6b4226';hx.fillRect(0,0,512,40);            // cabello arriba
   }
   function drawFront(drawFn){
-    // Zona frontal amplia (u≈0.5): elipse suave para fundir con la piel
+    // Zona frontal (u≈0.5): elipse suave para fundir con la piel
     hx.save();
-    hx.beginPath();hx.ellipse(256,134,124,112,0,0,Math.PI*2);hx.clip();
-    drawFn(132,22,248,224); // x,y,w,h del rect frontal
+    hx.beginPath();hx.ellipse(256,134,88,92,0,0,Math.PI*2);hx.clip();
+    drawFn(168,42,176,184); // x,y,w,h del rect frontal
     hx.restore();
   }
   paintHeadBase();
   drawFront((x,y,w,h)=>{ // placeholder: color con la inicial
     hx.fillStyle=ch.hex;hx.fillRect(x,y,w,h);
     hx.fillStyle=ch.color===0xDDDDDD?'#333':'#fff';
-    hx.font='bold 120px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
+    hx.font='bold 100px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
     hx.fillText(ch.initial,256,140);
   });
   const headTex=new THREE.CanvasTexture(hC);headTex.colorSpace=THREE.SRGBColorSpace;
@@ -843,11 +843,6 @@ function createKart(charIdx){
   head.position.set(0,headY,headZ);
   head.rotation.y=Math.PI/2; // u=0.5 de la textura mira al frente del kart (-Z)
   group.add(head);
-  // Gorrita pequeña del color del personaje (no tapa la cara)
-  const cap=new THREE.Mesh(
-    new THREE.SphereGeometry(HEAD_R+0.04,20,10,0,Math.PI*2,0,Math.PI*0.26),
-    new THREE.MeshPhongMaterial({color:ch.color,shininess:100,specular:0x999999}));
-  cap.position.set(0,headY+0.1,headZ); group.add(cap);
 
   // Foto real envuelta en la cabeza
   const img=new Image(); img.onload=()=>{
