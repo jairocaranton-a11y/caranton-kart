@@ -814,42 +814,40 @@ function createKart(charIdx){
   const spoilerPost=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.4,0.1),chromeMat); spoilerPost.position.set(0,0.95,1.1); group.add(spoilerPost);
   const spoiler=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.1,0.4),bodyMat); spoiler.position.set(0,1.18,1.15); group.add(spoiler);
 
-  // ── Piloto 3D: cabeza esférica con la foto envuelta + casco ──
-  const HEAD_R=0.5, headY=1.28, headZ=-0.1;
-  // Textura equirectangular: foto al frente, tono piel alrededor
+  // ── Piloto 3D: cabeza esférica con la foto envuelta + gorrita ──
+  const HEAD_R=0.56, headY=1.32, headZ=-0.1;
+  // Textura equirectangular: foto grande al frente, tono piel alrededor
   const hC=document.createElement('canvas');hC.width=512;hC.height=256;
   const hx=hC.getContext('2d');
   function paintHeadBase(){
     hx.fillStyle='#e6b98e';hx.fillRect(0,0,512,256);          // piel
-    hx.fillStyle='#6b4226';hx.fillRect(0,0,512,52);            // cabello arriba (asoma bajo el casco)
+    hx.fillStyle='#6b4226';hx.fillRect(0,0,512,40);            // cabello arriba
   }
   function drawFront(drawFn){
-    // Zona frontal de la textura (u≈0.5): elipse suave para fundir con la piel
+    // Zona frontal amplia (u≈0.5): elipse suave para fundir con la piel
     hx.save();
-    hx.beginPath();hx.ellipse(256,134,96,98,0,0,Math.PI*2);hx.clip();
-    drawFn(160,36,192,196); // x,y,w,h del rect frontal
+    hx.beginPath();hx.ellipse(256,134,124,112,0,0,Math.PI*2);hx.clip();
+    drawFn(132,22,248,224); // x,y,w,h del rect frontal
     hx.restore();
   }
   paintHeadBase();
-  drawFront((x,y,w,h)=>{ // placeholder: círculo de color con la inicial
+  drawFront((x,y,w,h)=>{ // placeholder: color con la inicial
     hx.fillStyle=ch.hex;hx.fillRect(x,y,w,h);
     hx.fillStyle=ch.color===0xDDDDDD?'#333':'#fff';
-    hx.font='bold 110px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
+    hx.font='bold 120px Arial Black,Arial';hx.textAlign='center';hx.textBaseline='middle';
     hx.fillText(ch.initial,256,140);
   });
   const headTex=new THREE.CanvasTexture(hC);headTex.colorSpace=THREE.SRGBColorSpace;
-  const head=new THREE.Mesh(new THREE.SphereGeometry(HEAD_R,24,18),new THREE.MeshLambertMaterial({map:headTex}));
+  // MeshBasic: la cara siempre bien iluminada y nítida
+  const head=new THREE.Mesh(new THREE.SphereGeometry(HEAD_R,24,18),new THREE.MeshBasicMaterial({map:headTex}));
   head.position.set(0,headY,headZ);
   head.rotation.y=Math.PI/2; // u=0.5 de la textura mira al frente del kart (-Z)
-  head.castShadow=!isMobile; group.add(head);
-  // Casco brillante del color del personaje (media esfera arriba)
-  const helmet=new THREE.Mesh(
-    new THREE.SphereGeometry(HEAD_R+0.07,24,12,0,Math.PI*2,0,Math.PI*0.42),
+  group.add(head);
+  // Gorrita pequeña del color del personaje (no tapa la cara)
+  const cap=new THREE.Mesh(
+    new THREE.SphereGeometry(HEAD_R+0.04,20,10,0,Math.PI*2,0,Math.PI*0.26),
     new THREE.MeshPhongMaterial({color:ch.color,shininess:100,specular:0x999999}));
-  helmet.position.set(0,headY+0.05,headZ); group.add(helmet);
-  // Visera al frente
-  const visor=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.07,0.3),new THREE.MeshPhongMaterial({color:0x222222,shininess:80}));
-  visor.position.set(0,headY+0.34,headZ-0.42); visor.rotation.x=0.25; group.add(visor);
+  cap.position.set(0,headY+0.1,headZ); group.add(cap);
 
   // Foto real envuelta en la cabeza
   const img=new Image(); img.onload=()=>{
