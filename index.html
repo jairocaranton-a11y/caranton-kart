@@ -1299,7 +1299,7 @@ function updateHUD(){
   if(!playerKart)return;
   const u=playerKart.userData;
   document.getElementById('kmh').textContent=Math.round(Math.abs(u.speed)*420);
-  document.getElementById('lapNum').textContent=Math.min(u.lap+2,3);
+  document.getElementById('lapNum').textContent=Math.min(u.lap+1,3); // lap=0 es la vuelta 1
   const ms=Date.now()-raceStart,m=Math.floor(ms/60000),s=((ms%60000)/1000).toFixed(2).padStart(5,'0');
   document.getElementById('timerBox').textContent=`⏱ ${m}:${s}`;
   let pos=1;const myScore=u.lap*TRACK_SEGS+u.wpIdx;
