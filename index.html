@@ -391,6 +391,12 @@ function buildTrack(trackCfg){
   const pts=trackCfg.pts.map(([x,z])=>new THREE.Vector3(x,0,z));
   trackCurve=new THREE.CatmullRomCurve3(pts,true,'catmullrom',0.5);
   WAYPTS=trackCurve.getPoints(TRACK_SEGS);
+  // En una curva cerrada getPoints() repite el punto inicial al final. Ese
+  // punto duplicado daba un vector direccion (0,0,0): el desplazamiento
+  // lateral se anulaba y los bordillos del ultimo tramo caian en el centro
+  // de la pista (el cuadro blanco sobre la meta), ademas de generar un
+  // tramo de asfalto degenerado. Al quitarlo, WAYPTS.length === TRACK_SEGS.
+  if(WAYPTS.length>TRACK_SEGS) WAYPTS.pop();
   computeTrackHeights(trackCfg.hills||0);
   // Escala del minimapa ajustada al tamano real de la pista
   let maxR=1; WAYPTS.forEach(p=>{const r=Math.hypot(p.x,p.z);if(r>maxR)maxR=r;});
@@ -440,7 +446,12 @@ function buildTrack(trackCfg){
   const sx=sc.getContext('2d');
   for(let i=0;i<8;i++){sx.fillStyle=i%2===0?'#000':'#fff';sx.fillRect(i*32,0,32,32);sx.fillStyle=i%2===0?'#fff':'#000';sx.fillRect(i*32,32,32,32);}
   const startMesh=new THREE.Mesh(new THREE.PlaneGeometry(TRACK_W,3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc)}));
-  startMesh.rotation.x=-Math.PI/2; startMesh.position.set(WAYPTS[0].x,trackH(0)+0.04,WAYPTS[0].z); scene.add(startMesh);
+  // El giro en el plano del suelo va en Z (se aplica antes que la X en orden
+  // Euler XYZ); con rotation.y no giraria y la meta quedaba tumbada a lo largo
+  // de la via, dejando un parche blanco en mitad de la pista.
+  const fdir=new THREE.Vector3().subVectors(WAYPTS[4],WAYPTS[0]).normalize();
+  startMesh.rotation.set(-Math.PI/2,0,Math.atan2(fdir.x,fdir.z));
+  startMesh.position.set(WAYPTS[0].x,trackH(0)+0.04,WAYPTS[0].z); scene.add(startMesh);
 
   setupFinishLine();
 }
