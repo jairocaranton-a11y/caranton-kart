@@ -55,6 +55,8 @@
 
     /* COUNTDOWN */
     #countdown{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(80px,18vw,130px);font-weight:900;color:#fff;text-shadow:4px 4px 0 #000;display:none;z-index:200;pointer-events:none;animation:popIn .45s cubic-bezier(.2,1.5,.5,1);}
+    #wrongWayBanner{position:fixed;top:18%;left:50%;transform:translateX(-50%);background:#cc0000;color:#fff;font-size:clamp(22px,5vw,38px);font-weight:900;letter-spacing:3px;padding:10px 36px;border-radius:12px;border:3px solid #ff4444;box-shadow:0 0 24px rgba(255,0,0,.7);display:none;z-index:180;pointer-events:none;animation:wrongWayBlink 0.55s step-end infinite;}
+    @keyframes wrongWayBlink{0%,100%{opacity:1;}50%{opacity:0.25;}}
     #itemPopup{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:72px;display:none;z-index:150;pointer-events:none;animation:popIn .4s cubic-bezier(.2,1.5,.5,1);}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(2.5);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
 
@@ -105,6 +107,7 @@
 </div>
 <div id="itemPopup">🎁</div>
 <div id="obstaclePopup" style="position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);font-size:54px;display:none;z-index:150;pointer-events:none;animation:popIn .35s cubic-bezier(.2,1.5,.5,1);"></div>
+<div id="wrongWayBanner">⚠ REVERSA ⚠</div>
 <div id="recordFlash">🏆 ¡NUEVO RÉCORD!</div>
 
 <!-- MENU -->
@@ -146,6 +149,21 @@
 </div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"}}</script>
+<script>
+// ── Auto-actualización: si el servidor tiene una versión más nueva que la
+//    copia en caché, recargar una sola vez (sin URLs ?v=) ──
+(async()=>{
+  try{
+    const last=+sessionStorage.getItem('ck_upd')||0;
+    if(Date.now()-last<120000)return; // evitar bucles de recarga
+    const[cached,fresh]=await Promise.all([
+      fetch(location.pathname).then(r=>r.text()),
+      fetch(location.pathname,{cache:'no-store'}).then(r=>r.text())
+    ]);
+    if(cached!==fresh){sessionStorage.setItem('ck_upd',Date.now());location.reload();}
+  }catch(e){/* sin conexión: seguir con la copia local */}
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
 
@@ -218,7 +236,8 @@ onResize(); window.addEventListener('resize',onResize);
 // ══════════════════════════════════════════
 //  ILUMINACIÓN (dinámica)
 // ══════════════════════════════════════════
-const ambientLight = new THREE.AmbientLight(0xffffff,0.7); scene.add(ambientLight);
+const ambientLight = new THREE.AmbientLight(0xffffff,0.4); scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0x87CEEB,0x3e6b2a,0.55); scene.add(hemiLight);
 const sun = new THREE.DirectionalLight(0xfffae0,1.4); sun.castShadow=!isMobile;
 sun.shadow.camera.near=0.5; sun.shadow.camera.far=300;
 sun.shadow.camera.left=-120; sun.shadow.camera.right=120;
@@ -229,7 +248,9 @@ sun.position.set(60,100,40); scene.add(sun);
 function applySky(sky){
   scene.background = new THREE.Color(sky.bg);
   scene.fog = new THREE.FogExp2(sky.fog,0.007);
-  ambientLight.intensity = sky.ambInt;
+  ambientLight.intensity = sky.ambInt*0.55;
+  hemiLight.color.setHex(sky.bg);
+  hemiLight.intensity = sky.ambInt*0.75;
   sun.intensity = sky.sunInt;
   sun.color.setHex(sky.sunCol);
   sun.position.set(...sky.sunPos);
@@ -323,13 +344,55 @@ function trackH(idx){ const n=WAYPT_H.length; return n?WAYPT_H[((idx%n)+n)%n]:0;
 // Finish line
 let FINISH_A=new THREE.Vector3(),FINISH_B=new THREE.Vector3(),FINISH_FWD=new THREE.Vector3();
 
+function makeAsphaltTexture(){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#5a5a5e';ctx.fillRect(0,0,256,256);
+  // Grano del asfalto (piedritas claras y oscuras)
+  for(let i=0;i<2600;i++){
+    const v=Math.random();
+    ctx.fillStyle=v<0.5?`rgba(0,0,0,${0.12+Math.random()*0.2})`:`rgba(255,255,255,${0.04+Math.random()*0.09})`;
+    const s=Math.random()<0.92?1:2;
+    ctx.fillRect(Math.random()*256,Math.random()*256,s,s);
+  }
+  // Marcas de neumáticos (bandas oscuras donde ruedan los karts)
+  const band=(cx)=>{const g=ctx.createLinearGradient(cx-26,0,cx+26,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(0.5,'rgba(0,0,0,0.22)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(cx-26,0,52,256);};
+  band(70);band(186);
+  // Borde levemente más claro (desgaste)
+  ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(0,0,10,256);ctx.fillRect(246,0,10,256);
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeGrassTexture(baseCol){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  const col=new THREE.Color(baseCol);
+  ctx.fillStyle=`rgb(${col.r*255|0},${col.g*255|0},${col.b*255|0})`;ctx.fillRect(0,0,256,256);
+  // Parches más claros/oscuros derivados del color base (sirve para pasto y arena)
+  const lite=col.clone().multiplyScalar(1.35),dark=col.clone().multiplyScalar(0.6);
+  for(let i=0;i<900;i++){
+    const c2=Math.random()<0.5?lite:dark;
+    ctx.fillStyle=`rgba(${Math.min(255,c2.r*255)|0},${Math.min(255,c2.g*255)|0},${Math.min(255,c2.b*255)|0},0.12)`;
+    const r=2+Math.random()*7;
+    ctx.beginPath();ctx.ellipse(Math.random()*256,Math.random()*256,r,r*0.55,Math.random()*3,0,Math.PI*2);ctx.fill();
+  }
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(40,40);
+  tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
 function buildTrack(trackCfg){
   currentTrackCfg=trackCfg;
   const pts=trackCfg.pts.map(([x,z])=>new THREE.Vector3(x,0,z));
   trackCurve=new THREE.CatmullRomCurve3(pts,true,'catmullrom',0.5);
   WAYPTS=trackCurve.getPoints(TRACK_SEGS);
   computeTrackHeights(trackCfg.hills||0);
-  // Escala del minimapa ajustada al tamaño real de la pista
+  // Escala del minimapa ajustada al tamano real de la pista
   let maxR=1; WAYPTS.forEach(p=>{const r=Math.hypot(p.x,p.z);if(r>maxR)maxR=r;});
   MINIMAP_SC=48/maxR;
 
@@ -355,7 +418,7 @@ function buildTrack(trackCfg){
   geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geo.setIndex(indices);
 
-  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x5a5a5a}));
+  const mesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:makeAsphaltTexture()}));
   mesh.receiveShadow=!isMobile; scene.add(mesh);
 
   // Línea de centro
@@ -432,6 +495,17 @@ function linesCross(ax,az,bx,bz,cx,cz,dx,dz){
 
 function advanceWaypoint(kart){
   const u=kart.userData;
+  // Si el kart se alejó mucho del waypoint actual (ej. salió de pista),
+  // buscamos globalmente el waypoint más cercano para re-enganchar.
+  const wpCur=WAYPTS[u.wpIdx];
+  if(Math.hypot(kart.position.x-wpCur.x,kart.position.z-wpCur.z)>TRACK_W*2.8){
+    let minD=Infinity,best=u.wpIdx;
+    for(let i=0;i<WAYPTS.length;i++){
+      const d=Math.hypot(kart.position.x-WAYPTS[i].x,kart.position.z-WAYPTS[i].z);
+      if(d<minD){minD=d;best=i;}
+    }
+    if(minD<TRACK_W*1.4) u.wpIdx=best;
+  }
   for(let i=0;i<4;i++){
     const wp=WAYPTS[u.wpIdx];
     const dx=kart.position.x-wp.x,dz=kart.position.z-wp.z;
@@ -522,7 +596,7 @@ function addBillboard(x,z,scale,kind){
 function addBillboardTree(x,z,scale){ addBillboard(x,z,scale,'tree'); }
 
 function buildEnvironment(trackCfg){
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({color:trackCfg.groundCol}));
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({map:makeGrassTexture(trackCfg.groundCol)}));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=!isMobile; scene.add(ground);
 
   const minR=trackCfg.treeMinR||78;
@@ -785,6 +859,7 @@ function makeNameTexture(name){
   ctx.fillStyle='#fff';ctx.font='bold 34px Arial Black,Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,128,30);
   return new THREE.CanvasTexture(c);
 }
+function lightenHex(hex,pct){const n=parseInt(hex.replace('#',''),16);const r=Math.min(255,((n>>16)&0xff)+pct),g=Math.min(255,((n>>8)&0xff)+pct),b=Math.min(255,(n&0xff)+pct);return `rgb(${r},${g},${b})`;}
 
 // Geometrías compartidas por los 4 karts (se construyen una sola vez)
 let _kgeo=null;
@@ -832,7 +907,7 @@ function kartGeometries(){
 
 function createKart(charIdx){
   const ch=CHARS[charIdx]; const group=new THREE.Group(); const G=kartGeometries();
-  const bodyMat=new THREE.MeshPhongMaterial({color:ch.color,shininess:70,specular:0x555555});
+  const bodyMat=new THREE.MeshPhongMaterial({color:ch.color,shininess:80,specular:0x666666});
   const darkMat=new THREE.MeshLambertMaterial({color:0x1c1c1c});
   const chromeMat=new THREE.MeshPhongMaterial({color:0xbbbbbb,shininess:110,specular:0xffffff});
   const wheelMat=new THREE.MeshLambertMaterial({color:0x121212});
@@ -878,10 +953,19 @@ function createKart(charIdx){
     const h=add(G.hub,bodyMat,x,y,z); h.rotation.z=Math.PI/2; h.userData.isWheel=true;
   });
 
+  // Sombra suave bajo el kart (siempre, vital en móvil sin shadowmap)
+  const shC=document.createElement('canvas');shC.width=shC.height=128;
+  const shCtx=shC.getContext('2d');
+  const shG=shCtx.createRadialGradient(64,64,8,64,64,62);
+  shG.addColorStop(0,'rgba(0,0,0,0.42)');shG.addColorStop(0.7,'rgba(0,0,0,0.25)');shG.addColorStop(1,'rgba(0,0,0,0)');
+  shCtx.fillStyle=shG;shCtx.beginPath();shCtx.ellipse(64,64,62,46,0,0,Math.PI*2);shCtx.fill();
+  const blob=new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shC),transparent:true,depthWrite:false}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=0.06;group.add(blob);
+
   // Nombre flotante
   const nameTex=makeNameTexture(ch.name);
-  const nameTag=new THREE.Mesh(G.name,new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-  nameTag.position.set(0,2.55,0);nameTag.userData.isNameTag=true;group.add(nameTag);
+  const nameTag=new THREE.Mesh(new THREE.PlaneGeometry(2.2,0.52),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+  nameTag.position.set(0,2.5,0);nameTag.userData.isNameTag=true;group.add(nameTag);
 
   group.userData={charIdx,speed:0,angle:0,maxSpeed:0.28*ch.speed,baseMaxSpeed:0.28*ch.speed,accel:0.013,friction:0.965,turnRate:0.038,wpIdx:0,lap:-1,finished:false,isPlayer:false,spinTimer:0,boostTimer:0,oilCooldown:0,finishTime:null,lookAhead:8,sideOffset:0,sideSpeed:0.015,aggression:0.7,mistakeTimer:5,mistakeInterval:6};
   return group;
@@ -979,10 +1063,27 @@ function isOnGrass(kart){
 // Ajusta altura (relieve) e inclinación del kart según la pendiente de la pista
 function applyTerrain(kart){
   const u=kart.userData;
-  const targetY=trackH(u.wpIdx);
-  kart.position.y+=(targetY-kart.position.y)*0.25;
-  const slope=trackH(u.wpIdx+3)-trackH(u.wpIdx-3);
-  kart.rotation.x=-slope*0.06;
+  // Waypoint más cercano a la POSICIÓN real del kart (wpIdx puede ir adelantado)
+  let best=u.wpIdx,bd=Infinity;
+  for(let o=-25;o<=25;o++){
+    const idx=((u.wpIdx+o)%TRACK_SEGS+TRACK_SEGS)%TRACK_SEGS;
+    const wp=WAYPTS[idx];
+    const dx=kart.position.x-wp.x,dz=kart.position.z-wp.z;
+    const d=dx*dx+dz*dz;
+    if(d<bd){bd=d;best=idx;}
+  }
+  // Interpolar altura proyectando sobre el segmento hacia el siguiente waypoint
+  const a=WAYPTS[best],b=WAYPTS[(best+1)%TRACK_SEGS];
+  const abx=b.x-a.x,abz=b.z-a.z,len2=abx*abx+abz*abz||1;
+  let t=((kart.position.x-a.x)*abx+(kart.position.z-a.z)*abz)/len2;
+  t=Math.max(0,Math.min(1,t));
+  let targetY=trackH(best)*(1-t)+trackH(best+1)*t;
+  // Fuera de la pista la altura baja gradualmente al nivel del suelo
+  const dist=Math.sqrt(bd),half=TRACK_W*0.55;
+  if(dist>half) targetY*=Math.max(0,1-(dist-half)/6);
+  kart.position.y+=(targetY-kart.position.y)*0.35;
+  const slope=trackH(best+4)-trackH(best-4);
+  kart.rotation.x=-slope*0.05;
 }
 
 function updatePlayerKart(dt){
@@ -1177,6 +1278,17 @@ function updateCamera(){
 // ══════════════════════════════════════════
 //  HUD
 // ══════════════════════════════════════════
+function isWrongWay(){
+  if(!playerKart)return false;
+  const u=playerKart.userData;
+  if(Math.abs(u.speed)<0.04)return false;
+  const wp=WAYPTS[u.wpIdx],wpN=WAYPTS[(u.wpIdx+1)%TRACK_SEGS];
+  const fwdX=wpN.x-wp.x,fwdZ=wpN.z-wp.z;
+  const len=Math.sqrt(fwdX*fwdX+fwdZ*fwdZ);
+  const dot=(Math.sin(u.angle)*fwdX+Math.cos(u.angle)*fwdZ)/len;
+  return dot<-0.45;
+}
+
 function updateHUD(){
   if(!playerKart)return;
   const u=playerKart.userData;
@@ -1187,6 +1299,7 @@ function updateHUD(){
   let pos=1;const myScore=u.lap*TRACK_SEGS+u.wpIdx;
   karts.forEach(k=>{if(k!==playerKart&&k.userData.lap*TRACK_SEGS+k.userData.wpIdx>myScore)pos++;});
   document.getElementById('posBox').textContent=pos+'°';
+  document.getElementById('wrongWayBanner').style.display=isWrongWay()?'block':'none';
   drawMinimap();
   updateBillboards();
   checkItemPickup();
@@ -1278,7 +1391,7 @@ function clearScene(){
   // Limpiar objetos dinámicos (pista, árboles, etc.)
   const keep=new Set();
   scene.children.forEach(obj=>{
-    if(obj===ambientLight||obj===sun)keep.add(obj);
+    if(obj===ambientLight||obj===sun||obj===hemiLight)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
   obstacleObjects=[];dunes=[];_treeTex=null;_cactusTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
