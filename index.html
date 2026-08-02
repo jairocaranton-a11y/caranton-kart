@@ -466,7 +466,9 @@ function setupFinishLine(){
 
 function buildFinishArch(){
   const mid=FINISH_A.clone().lerp(FINISH_B,0.5);
-  const archAngle=Math.atan2(FINISH_B.x-FINISH_A.x,FINISH_B.z-FINISH_A.z);
+  // archAngle apunta a lo ANCHO de la pista (A→B). Restar 90° deja la barra
+  // cruzando la pista y el cartel de frente al piloto que llega.
+  const archAngle=Math.atan2(FINISH_B.x-FINISH_A.x,FINISH_B.z-FINISH_A.z)-Math.PI/2;
   const h0=trackH(0);
   const redMat=new THREE.MeshLambertMaterial({color:0xFF2222});
   [FINISH_A,FINISH_B].forEach(p=>{
@@ -994,6 +996,7 @@ function spawnKarts(playerIdx){
     const wp0=Math.floor(t*TRACK_SEGS);
     kart.position.set(pos.x+right.x*off,trackH(wp0),pos.z+right.z*off);
     kart.userData.angle=Math.atan2(tan.x,tan.z);kart.userData.wpIdx=wp0;
+    kart.rotation.y=kart.userData.angle; // orientarlos ya en la parrilla (la cuenta regresiva no actualiza la física)
     karts.push(kart);scene.add(kart);
   });
   playerKart=karts[0];
