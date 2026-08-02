@@ -91,7 +91,7 @@
     /* CONTROLES MÓVIL */
     #joystickArea{display:none;position:fixed;inset:0;z-index:50;pointer-events:none;}
     /* Dirección + sorpresa (abajo izquierda) */
-    #joyLeftBtns{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom));left:calc(14px + env(safe-area-inset-left));display:flex;flex-direction:column;align-items:flex-start;gap:10px;pointer-events:none;}
+    #joyLeftBtns{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom));left:calc(14px + env(safe-area-inset-left));display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;}
     #joyArrows{display:flex;gap:10px;pointer-events:none;}
     .joyArrow{width:72px;height:72px;border-radius:16px;background:rgba(255,255,255,.1);border:2.5px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:32px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;active:opacity:.7;}
     .joyArrow:active{background:rgba(255,255,255,.25);}
@@ -950,6 +950,8 @@ function kartGeometries(){
     wingPost:new THREE.BoxGeometry(0.07,0.34,0.07),
     wingRear:new THREE.BoxGeometry(1.40,0.07,0.40),
     wingFront:new THREE.BoxGeometry(1.26,0.07,0.28),
+    flameOut:new THREE.ConeGeometry(0.26,1.05,10),
+    flameIn:new THREE.ConeGeometry(0.14,0.66,8),
     light:new THREE.SphereGeometry(0.10,8,8),
     tail:new THREE.BoxGeometry(0.17,0.09,0.06),
     head:new THREE.PlaneGeometry(1.06,1.06),
@@ -976,6 +978,15 @@ function createKart(charIdx){
   // Motor trasero y escapes
   add(G.engine,darkMat,0,0.92,-1.04,true);
   [-0.20,0.20].forEach(x=>{const p=add(G.pipe,chromeMat,x,1.16,-1.24);p.rotation.x=-0.38;});
+  // 🚀 Llamaradas del turbo: salen hacia atrás, ocultas hasta usar el cohete
+  [[-0.30,0xFF7A18,G.flameOut,0.68],[0.30,0xFF7A18,G.flameOut,0.68],
+   [-0.30,0xFFE24A,G.flameIn,0.95],[0.30,0xFFE24A,G.flameIn,0.95]].forEach(([x,col,geo,op])=>{
+    const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+    m.position.set(x,0.66,-1.92); m.rotation.x=-1.30;  // punta hacia atrás, algo hacia arriba
+    m.visible=false; m.userData.isFlame=true; m.userData.baseOp=op;
+    group.add(m);
+  });
   // Alerón trasero
   [-0.34,0.34].forEach(x=>add(G.wingPost,chromeMat,x,1.02,-1.30));
   add(G.wingRear,bodyMat,0,1.20,-1.32,true);
@@ -1114,6 +1125,19 @@ function isOnGrass(kart){
   return min>TRACK_W*0.65;
 }
 
+// Enciende y hace parpadear las llamaradas mientras dura el turbo
+function updateFlames(kart){
+  const on=kart.userData.boostTimer>0;
+  kart.children.forEach(c=>{
+    if(!c.userData.isFlame)return;
+    c.visible=on;
+    if(on){
+      c.scale.set(1,0.72+Math.random()*0.5,1);            // la llama alarga y encoge
+      c.material.opacity=c.userData.baseOp*(0.65+Math.random()*0.35);
+    }
+  });
+}
+
 // Ajusta altura (relieve) e inclinación del kart según la pendiente de la pista
 function applyTerrain(kart){
   const u=kart.userData;
@@ -1156,6 +1180,7 @@ function updatePlayerKart(dt){
   playerKart.rotation.z=u.spinTimer>0?Math.sin(Date.now()*0.03)*0.3:(-inp.turn*0.08*Math.min(1,Math.abs(u.speed)/u.maxSpeed));
   playerKart.children.forEach(c=>{if(c.userData.isWheel)c.rotation.x+=u.speed*9;});
   if(u.boostTimer>0){u.boostTimer-=dt;if(u.boostTimer<=0){u.maxSpeed=u.baseMaxSpeed;document.getElementById('boostBar').style.display='none';}else{document.getElementById('boostFill').style.width=(u.boostTimer/3*100)+'%';}}
+  updateFlames(playerKart);
   advanceWaypoint(playerKart);checkLapCrossing(playerKart);applyTerrain(playerKart);updateEngineSound(u.speed);
 }
 
@@ -1286,6 +1311,45 @@ function updateItemHUD(){
   else{sl.textContent='🎁';sl.classList.remove('ready');lb.style.display='none';}
   const jib=document.getElementById('joyItemBtn');if(jib)jib.textContent=playerItem||'🎁';
 }
+// 🍌 Cáscara de banano abierta: centro + tres gajos que salen hacia afuera
+function createBananaPeel(){
+  const g=new THREE.Group();
+  const claro=new THREE.MeshLambertMaterial({color:0xFFD21E});
+  const oscuro=new THREE.MeshLambertMaterial({color:0xE0A800});
+  // Corazón de la fruta
+  const centro=new THREE.Mesh(new THREE.SphereGeometry(0.16,10,8),new THREE.MeshLambertMaterial({color:0xFFF0B0}));
+  centro.scale.y=0.5; centro.position.y=0.08; g.add(centro);
+  // Cada gajo cuelga de un pivote propio: así el giro alrededor del centro (Y
+  // del pivote) y la inclinación del gajo (X) no se mezclan en un mismo Euler.
+  for(let i=0;i<3;i++){
+    const pivote=new THREE.Object3D();
+    pivote.rotation.y=i*Math.PI*2/3+0.5;
+    const gajo=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.56,7),i===0?claro:oscuro);
+    gajo.scale.set(1,1,0.45);                // aplanado, como una cáscara
+    gajo.rotation.x=Math.PI/2-0.30;          // tumbado hacia afuera, punta algo alzada
+    gajo.position.set(0,0.09,0.30);
+    pivote.add(gajo);
+    g.add(pivote);
+  }
+  const tallo=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.055,0.18,6),new THREE.MeshLambertMaterial({color:0x6B4A17}));
+  tallo.position.y=0.17; g.add(tallo);
+  return g;
+}
+
+// 🔫 Bala: casquillo con punta de cobre, apuntando en su dirección de vuelo
+function createBullet(){
+  const g=new THREE.Group();
+  const laton=new THREE.MeshPhongMaterial({color:0xD4AF37,shininess:95,specular:0xffffff});
+  const cobre=new THREE.MeshPhongMaterial({color:0xB5651D,shininess:80,specular:0xdddddd});
+  const cuerpo=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.42,12),laton);
+  cuerpo.rotation.x=Math.PI/2; cuerpo.position.z=-0.06; g.add(cuerpo);   // eje +Y -> +Z
+  const punta=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.30,12),cobre);
+  punta.rotation.x=Math.PI/2; punta.position.z=0.30; g.add(punta);
+  const culote=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.07,12),cobre);
+  culote.rotation.x=Math.PI/2; culote.position.z=-0.29; g.add(culote);
+  return g;
+}
+
 function activateItem(){
   if(!playerItem)return;
   const item=playerItem;playerItem=null;updateItemHUD();
@@ -1294,14 +1358,18 @@ function activateItem(){
     document.getElementById('boostBar').style.display='block';
   }else if(item==='🍌'){
     const u=playerKart.userData;
-    const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8),new THREE.MeshLambertMaterial({color:0xFFDD00}));
+    const mesh=createBananaPeel();
     const bx=playerKart.position.x-Math.sin(u.angle)*2.5,bz=playerKart.position.z-Math.cos(u.angle)*2.5;
-    mesh.position.set(bx,0.5,bz);scene.add(mesh);bananas.push({mesh,pos:new THREE.Vector3(bx,0.5,bz)});
+    mesh.position.set(bx,playerKart.position.y+0.04,bz);
+    mesh.rotation.y=Math.random()*Math.PI*2;   // cae en cualquier orientación
+    scene.add(mesh);bananas.push({mesh,pos:new THREE.Vector3(bx,0.5,bz)});
     playBeep(300,0.15,0.2);
   }else if(item==='🟢'){
     const u=playerKart.userData;
-    const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.4,10,10),new THREE.MeshLambertMaterial({color:0x22FF44}));
-    mesh.position.copy(playerKart.position);mesh.position.y=0.6;scene.add(mesh);
+    const mesh=createBullet();
+    mesh.position.copy(playerKart.position);mesh.position.y+=0.6;
+    mesh.rotation.y=u.angle;                   // la punta mira al frente
+    scene.add(mesh);
     shells.push({mesh,vx:Math.sin(u.angle)*0.7,vz:Math.cos(u.angle)*0.7,life:3});
     playBeep(600,0.1,0.25);
   }
@@ -1311,7 +1379,7 @@ function updateProjectiles(dt){
     karts.forEach(k=>{const dx=k.position.x-b.pos.x,dz=k.position.z-b.pos.z;if(Math.sqrt(dx*dx+dz*dz)<1.6){k.userData.spinTimer=1.5;playBeep(150,0.2,0.3);vib([50]);scene.remove(b.mesh);bananas.splice(i,1);}});
   });
   shells.forEach((s,i)=>{
-    s.mesh.position.x+=s.vx;s.mesh.position.z+=s.vz;s.mesh.rotation.y+=0.2;s.life-=dt;let hit=false;
+    s.mesh.position.x+=s.vx;s.mesh.position.z+=s.vz;s.life-=dt;let hit=false;
     karts.forEach(k=>{if(k===playerKart)return;const dx=k.position.x-s.mesh.position.x,dz=k.position.z-s.mesh.position.z;if(Math.sqrt(dx*dx+dz*dz)<1.8){k.userData.speed*=-0.6;k.userData.spinTimer=2;playCollisionSound();hit=true;}});
     if(s.life<=0||hit){scene.remove(s.mesh);shells.splice(i,1);}
   });
