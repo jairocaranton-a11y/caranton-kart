@@ -1289,7 +1289,7 @@ function checkObstacleCollisions(){
 // ══════════════════════════════════════════
 //  POWER-UPS
 // ══════════════════════════════════════════
-const ITEMS=['🚀','🍌','🟢'];
+const ITEMS=['🚀','🍌','🔫'];
 function checkItemPickup(){
   if(playerItem)return;
   itemBoxes.forEach(box=>{
@@ -1364,7 +1364,7 @@ function activateItem(){
     mesh.rotation.y=Math.random()*Math.PI*2;   // cae en cualquier orientación
     scene.add(mesh);bananas.push({mesh,pos:new THREE.Vector3(bx,0.5,bz)});
     playBeep(300,0.15,0.2);
-  }else if(item==='🟢'){
+  }else if(item==='🔫'){
     const u=playerKart.userData;
     const mesh=createBullet();
     mesh.position.copy(playerKart.position);mesh.position.y+=0.6;
