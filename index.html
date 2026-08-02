@@ -434,10 +434,12 @@ function buildTrack(trackCfg){
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const col=Math.floor(i/4)%2===0?trackCfg.kerbA:trackCfg.kerbB;
     const mat=new THREE.MeshLambertMaterial({color:col});
+    const kerbAngle=Math.atan2(dir.x,dir.z); // que sigan el trazado, no los ejes del mundo
     for(const side of[-1,1]){
       const pos=p.clone().addScaledVector(right,side*(TRACK_W/2+0.6));
       const k=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.22,1.2),mat);
-      k.position.set(pos.x,trackH(i)+0.11,pos.z); scene.add(k);
+      k.position.set(pos.x,trackH(i)+0.11,pos.z);
+      k.rotation.y=kerbAngle; scene.add(k);
     }
   }
 
