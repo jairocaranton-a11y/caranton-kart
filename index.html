@@ -1336,17 +1336,32 @@ function createBananaPeel(){
   return g;
 }
 
-// 🔫 Bala: casquillo con punta de cobre, apuntando en su dirección de vuelo
+// 🔫 Bala: casquillo grande con punta de cobre, estela de fuego y halo,
+//    apuntando en su dirección de vuelo
 function createBullet(){
   const g=new THREE.Group();
-  const laton=new THREE.MeshPhongMaterial({color:0xD4AF37,shininess:95,specular:0xffffff});
-  const cobre=new THREE.MeshPhongMaterial({color:0xB5651D,shininess:80,specular:0xdddddd});
-  const cuerpo=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.42,12),laton);
-  cuerpo.rotation.x=Math.PI/2; cuerpo.position.z=-0.06; g.add(cuerpo);   // eje +Y -> +Z
-  const punta=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.30,12),cobre);
-  punta.rotation.x=Math.PI/2; punta.position.z=0.30; g.add(punta);
-  const culote=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.07,12),cobre);
-  culote.rotation.x=Math.PI/2; culote.position.z=-0.29; g.add(culote);
+  const eje=new THREE.Object3D();          // gira sobre su propio eje de vuelo
+  eje.userData.esEje=true; g.add(eje);
+  const laton=new THREE.MeshPhongMaterial({color:0xFFCB3D,shininess:120,specular:0xffffff,emissive:0x6B4A00});
+  const cobre=new THREE.MeshPhongMaterial({color:0xFF7B2E,shininess:95,specular:0xffe0a0,emissive:0x5E2200});
+  const cuerpo=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.80,14),laton);
+  cuerpo.rotation.x=Math.PI/2; cuerpo.position.z=-0.10; eje.add(cuerpo);   // eje +Y -> +Z
+  const punta=new THREE.Mesh(new THREE.ConeGeometry(0.26,0.55,14),cobre);
+  punta.rotation.x=Math.PI/2; punta.position.z=0.575; eje.add(punta);
+  const culote=new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.30,0.14,14),cobre);
+  culote.rotation.x=Math.PI/2; culote.position.z=-0.55; eje.add(culote);
+  // Aros: hacen visible el giro (el toro ya tiene su eje en Z)
+  [-0.32,0.04].forEach(z=>{
+    const aro=new THREE.Mesh(new THREE.TorusGeometry(0.268,0.038,6,14),cobre);
+    aro.position.z=z; eje.add(aro);
+  });
+  // Estela de fuego hacia atrás (la punta del cono mira a -Z)
+  [[0.32,1.25,-1.22,0xFFA51F,0.60],[0.17,0.85,-1.00,0xFFF3A8,0.85]].forEach(([r,h,z,col,op])=>{
+    const e=new THREE.Mesh(new THREE.ConeGeometry(r,h,12),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));
+    e.rotation.x=-Math.PI/2; e.position.z=z;
+    e.userData.esEstela=true; e.userData.baseOp=op; g.add(e);
+  });
   return g;
 }
 
@@ -1367,7 +1382,10 @@ function activateItem(){
   }else if(item==='🔫'){
     const u=playerKart.userData;
     const mesh=createBullet();
-    mesh.position.copy(playerKart.position);mesh.position.y+=0.6;
+    // Nace por delante del morro: dentro del kart quedaba tapada al dispararla
+    mesh.position.set(playerKart.position.x+Math.sin(u.angle)*1.9,
+                      playerKart.position.y+0.75,
+                      playerKart.position.z+Math.cos(u.angle)*1.9);
     mesh.rotation.y=u.angle;                   // la punta mira al frente
     scene.add(mesh);
     shells.push({mesh,vx:Math.sin(u.angle)*0.7,vz:Math.cos(u.angle)*0.7,life:3});
@@ -1380,6 +1398,13 @@ function updateProjectiles(dt){
   });
   shells.forEach((s,i)=>{
     s.mesh.position.x+=s.vx;s.mesh.position.z+=s.vz;s.life-=dt;let hit=false;
+    s.mesh.children.forEach(c=>{
+      if(c.userData.esEje) c.rotation.z+=0.38;                       // rueda sobre su eje
+      else if(c.userData.esEstela){                                  // la llama titila
+        c.scale.set(1,0.78+Math.random()*0.45,1);
+        c.material.opacity=c.userData.baseOp*(0.7+Math.random()*0.3);
+      }
+    });
     karts.forEach(k=>{if(k===playerKart)return;const dx=k.position.x-s.mesh.position.x,dz=k.position.z-s.mesh.position.z;if(Math.sqrt(dx*dx+dz*dz)<1.8){k.userData.speed*=-0.6;k.userData.spinTimer=2;playCollisionSound();hit=true;}});
     if(s.life<=0||hit){scene.remove(s.mesh);shells.splice(i,1);}
   });
