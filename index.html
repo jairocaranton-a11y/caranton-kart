@@ -39,7 +39,7 @@
     #recordFlash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#FFD700,#FF8C00);color:#000;font-size:clamp(22px,5vw,38px);font-weight:900;padding:16px 32px;border-radius:16px;display:none;z-index:300;pointer-events:none;box-shadow:0 0 40px rgba(255,215,0,.8);}
 
     /* MENU */
-    #menu{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(160deg,#0d0028,#1a0066 40%,#003399 80%,#0055cc);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    #menu{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(160deg,#0d0028,#1a0066 40%,#003399 80%,#0055cc);display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;overflow-y:auto;padding:12px 10px;}
     #menuTitle{font-size:clamp(32px,7vw,68px);font-weight:900;letter-spacing:3px;color:#FFD700;text-shadow:4px 4px 0 #FF4500,8px 8px 0 rgba(0,0,0,.4);margin-bottom:5px;}
     #menuSub{color:rgba(255,255,255,.75);font-size:clamp(12px,2.2vw,18px);margin-bottom:24px;letter-spacing:2px;}
 
@@ -71,7 +71,7 @@
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(2.5);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
 
     /* PODIO */
-    #podiumScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,rgba(0,0,0,.92),rgba(10,0,30,.96));display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:100;}
+    #podiumScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,rgba(0,0,0,.92),rgba(10,0,30,.96));display:none;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;overflow-y:auto;padding:12px 10px;gap:8px;z-index:100;}
     #podiumTitle{color:#FFD700;font-size:clamp(28px,6vw,54px);font-weight:900;text-shadow:3px 3px 0 #a05000;margin-bottom:8px;}
     #podiumStage{display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;}
     .podSlot{display:flex;flex-direction:column;align-items:center;gap:5px;}
@@ -121,7 +121,7 @@
     /* ── Menú en pantallas bajas (celular en horizontal) ──
        Estaba centrado en un flex de alto fijo y sin scroll: al no caber,
        el botón de empezar quedaba fuera de la pantalla y no se podía pulsar. */
-    @media (max-height:540px){
+    @media (max-height:700px){
       #menu{justify-content:flex-start;overflow-y:auto;padding:10px 10px 18px;}
       #menuTitle{font-size:clamp(22px,5vw,34px);margin-bottom:2px;}
       #menuSub{font-size:11px;margin-bottom:10px;letter-spacing:1px;}
@@ -1599,7 +1599,7 @@ function activateItem(){
     const u=playerKart.userData;
     const mesh=createBananaPeel();
     const bx=playerKart.position.x-Math.sin(u.angle)*2.5,bz=playerKart.position.z-Math.cos(u.angle)*2.5;
-    mesh.position.set(bx,playerKart.position.y+0.04,bz);
+    mesh.position.set(bx,alturaPistaEn(bx,bz,u.wpIdx).y+0.04,bz);
     mesh.rotation.y=Math.random()*Math.PI*2;   // cae en cualquier orientación
     scene.add(mesh);bananas.push({mesh,pos:new THREE.Vector3(bx,0.5,bz)});
     playBeep(300,0.15,0.2);
@@ -1612,16 +1612,34 @@ function activateItem(){
                       playerKart.position.z+Math.cos(u.angle)*1.9);
     mesh.rotation.y=u.angle;                   // la punta mira al frente
     scene.add(mesh);
-    shells.push({mesh,vx:Math.sin(u.angle)*0.7,vz:Math.cos(u.angle)*0.7,life:3});
+    shells.push({mesh,vx:Math.sin(u.angle)*0.7,vz:Math.cos(u.angle)*0.7,life:3,wpIdx:u.wpIdx});
     playBeep(600,0.1,0.25);
   }
 }
+// Altura del asfalto bajo un punto cualquiera. Se busca sólo en una ventana
+// alrededor del último waypoint conocido: el proyectil avanza por la pista, así
+// que no hace falta recorrer los 300 puntos en cada fotograma.
+function alturaPistaEn(x,z,idxPrev){
+  let mejor=idxPrev,min=Infinity;
+  for(let o=-4;o<=10;o++){
+    const i=((idxPrev+o)%TRACK_SEGS+TRACK_SEGS)%TRACK_SEGS;
+    const dx=WAYPTS[i].x-x, dz=WAYPTS[i].z-z, d=dx*dx+dz*dz;
+    if(d<min){min=d;mejor=i;}
+  }
+  return {y:trackH(mejor),idx:mejor};
+}
+
 function updateProjectiles(dt){
   bananas.forEach((b,i)=>{
     karts.forEach(k=>{const dx=k.position.x-b.pos.x,dz=k.position.z-b.pos.z;if(Math.sqrt(dx*dx+dz*dz)<1.6){k.userData.spinTimer=1.5;playBeep(150,0.2,0.3);vib([50]);scene.remove(b.mesh);bananas.splice(i,1);}});
   });
   shells.forEach((s,i)=>{
     s.mesh.position.x+=s.vx;s.mesh.position.z+=s.vz;s.life-=dt;let hit=false;
+    // Volaba a la altura del disparo: en las pistas con relieve se enterraba
+    // en las subidas y quedaba flotando en las bajadas.
+    const suelo=alturaPistaEn(s.mesh.position.x,s.mesh.position.z,s.wpIdx);
+    s.wpIdx=suelo.idx;
+    s.mesh.position.y+=((suelo.y+0.75)-s.mesh.position.y)*0.35;
     s.mesh.children.forEach(c=>{
       if(c.userData.esEje) c.rotation.z+=0.38;                       // rueda sobre su eje
       else if(c.userData.esEstela){                                  // la llama titila
