@@ -65,7 +65,7 @@
 
     /* COUNTDOWN */
     #countdown{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(80px,18vw,130px);font-weight:900;color:#fff;text-shadow:4px 4px 0 #000;display:none;z-index:200;pointer-events:none;animation:popIn .45s cubic-bezier(.2,1.5,.5,1);}
-    #wrongWayBanner{position:fixed;top:18%;left:50%;transform:translateX(-50%);background:#cc0000;color:#fff;font-size:clamp(22px,5vw,38px);font-weight:900;letter-spacing:3px;padding:10px 36px;border-radius:12px;border:3px solid #ff4444;box-shadow:0 0 24px rgba(255,0,0,.7);display:none;z-index:180;pointer-events:none;animation:wrongWayBlink 0.55s step-end infinite;}
+    #wrongWayBanner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;background:#cc0000;color:#fff;font-size:clamp(22px,5vw,38px);font-weight:900;letter-spacing:3px;padding:10px 36px;border-radius:12px;border:3px solid #ff4444;box-shadow:0 0 24px rgba(255,0,0,.7);display:none;z-index:180;pointer-events:none;animation:wrongWayBlink 0.55s step-end infinite;}
     @keyframes wrongWayBlink{0%,100%{opacity:1;}50%{opacity:0.25;}}
     #itemPopup{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:72px;display:none;z-index:150;pointer-events:none;animation:popIn .4s cubic-bezier(.2,1.5,.5,1);}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(2.5);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
@@ -702,25 +702,71 @@ function createTireStack(x,z,y=0){
 function createPothole(x,z,y=0){
   const c=document.createElement('canvas');c.width=c.height=256;
   const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
-  // Sombra exterior
-  ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(131,132,100,76,0,0,Math.PI*2);ctx.fill();
-  // Interior oscuro del hueco
-  const g=ctx.createRadialGradient(128,128,8,128,128,94);
-  g.addColorStop(0,'#070707');g.addColorStop(0.6,'#191208');g.addColorStop(1,'rgba(28,20,5,0)');
-  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(128,128,94,72,0,0,Math.PI*2);ctx.fill();
-  // Grietas
-  ctx.strokeStyle='#2a1e08';ctx.lineWidth=2.5;
-  [[128,42,146,128],[128,42,108,130],[146,128,168,200],[108,130,86,198],[128,128,88,105],[128,128,168,152]].forEach(([x1,y1,x2,y2])=>{
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const CX=128,CY=128;
+
+  // Contorno irregular: un hueco de verdad no es una elipse perfecta
+  const N=18, borde=[];
+  for(let i=0;i<N;i++){
+    const a=i/N*Math.PI*2;
+    const r=1-0.20*Math.random();
+    borde.push([CX+Math.cos(a)*96*r, CY+Math.sin(a)*74*r]);
+  }
+  const trazar=(esc,dx,dy)=>{
+    ctx.beginPath();
+    borde.forEach(([px,py],i)=>{
+      const qx=CX+(px-CX)*esc+dx, qy=CY+(py-CY)*esc+dy;
+      i===0?ctx.moveTo(qx,qy):ctx.lineTo(qx,qy);
+    });
+    ctx.closePath();
+  };
+
+  // Asfalto agrietado alrededor del borde
+  ctx.strokeStyle='rgba(18,18,20,0.7)';ctx.lineWidth=2.5;
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2, r0=0.98+Math.random()*0.06, r1=r0+0.10+Math.random()*0.16;
+    ctx.beginPath();
+    ctx.moveTo(CX+Math.cos(a)*96*r0, CY+Math.sin(a)*74*r0);
+    ctx.lineTo(CX+Math.cos(a)*96*r1, CY+Math.sin(a)*74*r1);
+    ctx.stroke();
+  }
+
+  // Pared interior: gris del asfalto partido, más claro arriba (le da profundidad)
+  trazar(1,0,0);
+  const pared=ctx.createLinearGradient(0,CY-74,0,CY+74);
+  pared.addColorStop(0,'#4C4C52');pared.addColorStop(0.45,'#2A2A2E');pared.addColorStop(1,'#161619');
+  ctx.fillStyle=pared;ctx.fill();
+
+  // Fondo del hueco, desplazado hacia abajo como si se viera en perspectiva
+  trazar(0.72,0,9);
+  const fondo=ctx.createRadialGradient(CX,CY+6,4,CX,CY+9,72);
+  fondo.addColorStop(0,'#000');fondo.addColorStop(0.65,'#0B0B0C');fondo.addColorStop(1,'#17171A');
+  ctx.fillStyle=fondo;ctx.fill();
+
+  // Labio iluminado del borde superior
+  ctx.strokeStyle='rgba(158,158,166,0.38)';ctx.lineWidth=2.5;
+  // Sólo los tramos contiguos del borde superior: si se saltan puntos hay que
+  // levantar el lápiz, o el trazo cruza el hueco de lado a lado.
+  ctx.beginPath();
+  let seguido=false;
+  borde.forEach(([px,py])=>{
+    const arriba=py<CY+6;
+    if(arriba) seguido?ctx.lineTo(px,py):ctx.moveTo(px,py);
+    seguido=arriba;
   });
-  // Borde del asfalto roto
-  ctx.strokeStyle='rgba(110,88,35,0.5)';ctx.lineWidth=5;
-  ctx.beginPath();ctx.ellipse(128,125,94,70,-0.1,0,Math.PI*2);ctx.stroke();
-  // Señal amarilla de advertencia
-  ctx.fillStyle='rgba(255,220,0,0.9)';ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⚠',128,22);
+  ctx.stroke();
+
+  // Cascotes sueltos dentro y fuera
+  for(let i=0;i<26;i++){
+    const a=Math.random()*Math.PI*2, r=0.35+Math.random()*0.85;
+    const px=CX+Math.cos(a)*96*r, py=CY+Math.sin(a)*74*r+6;
+    const s=1.6+Math.random()*3.4;
+    ctx.fillStyle=r>0.95?'rgba(96,96,103,0.6)':'rgba(64,64,70,0.45)';
+    ctx.beginPath();ctx.ellipse(px,py,s,s*0.7,Math.random()*3,0,Math.PI*2);ctx.fill();
+  }
+
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(4.4,3.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
   mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y+0.03,z);scene.add(mesh);
-  obstacleObjects.push({type:'hueco',mesh,x,z,r:1.7});
+  obstacleObjects.push({type:'hueco',mesh,x,z,r:1.7,dentro:new Set()});
 }
 
 function createOilSlick(x,z,y=0){
@@ -950,6 +996,7 @@ function kartGeometries(){
     wingPost:new THREE.BoxGeometry(0.07,0.34,0.07),
     wingRear:new THREE.BoxGeometry(1.40,0.07,0.40),
     wingFront:new THREE.BoxGeometry(1.26,0.07,0.28),
+    beam:new THREE.ConeGeometry(0.58,4.20,10,1,true),   // abierto: sin tapa al fondo
     flameOut:new THREE.ConeGeometry(0.26,1.05,10),
     flameIn:new THREE.ConeGeometry(0.14,0.66,8),
     light:new THREE.SphereGeometry(0.10,8,8),
@@ -997,6 +1044,15 @@ function createKart(charIdx){
   const tlMat=new THREE.MeshBasicMaterial({color:0xff3322});
   [-0.34,0.34].forEach(x=>add(G.light,hlMat,x,0.62,1.38));
   [-0.34,0.34].forEach(x=>add(G.tail,tlMat,x,0.68,-1.42));
+  // 💡 Haces de luz: más marcados en las pistas con poca luz ambiente
+  const penumbra=!currentTrackCfg||currentTrackCfg.sky.ambInt<0.6;
+  const haz=penumbra?0.26:0.08;
+  [-0.34,0.34].forEach(x=>{
+    const m=new THREE.Mesh(G.beam,new THREE.MeshBasicMaterial({color:0xFFDF96,transparent:true,
+      opacity:haz,blending:THREE.AdditiveBlending,depthWrite:false}));
+    m.position.set(x,0.60,3.55); m.rotation.x=-Math.PI/2;  // punta en el faro, se abre hacia delante
+    group.add(m);
+  });
 
   // ── Asiento, piloto y volante
   add(G.seatBase,darkMat,0,0.83,-0.22);
@@ -1059,6 +1115,11 @@ function spawnKarts(playerIdx){
     kart.position.set(pos.x+right.x*off,trackH(wp0),pos.z+right.z*off);
     kart.userData.angle=Math.atan2(tan.x,tan.z);kart.userData.wpIdx=wp0;
     kart.rotation.y=kart.userData.angle; // orientarlos ya en la parrilla (la cuenta regresiva no actualiza la física)
+    // Una sola luz real, en el kart del jugador, para ver la pista de noche
+    if(slot===0&&currentTrackCfg&&currentTrackCfg.sky.ambInt<0.6){
+      const farol=new THREE.PointLight(0xFFE7B0,3.4,46,1.7);
+      farol.position.set(0,1.7,2.4); kart.add(farol);
+    }
     karts.push(kart);scene.add(kart);
   });
   playerKart=karts[0];
@@ -1248,13 +1309,21 @@ function checkObstacleCollisions(){
           if(kart.userData.isPlayer&&now-lastCollSnd>300){playCollisionSound();lastCollSnd=now;showObstaclePopup('🏎️ ¡LLANTAS!');}
         }
       } else if(obs.type==='hueco'){
-        // Frenazo y pequeño giro
-        if(dist<obs.r&&Math.abs(kart.userData.speed)>0.05&&kart.userData.spinTimer<=0){
-          kart.userData.speed*=0.72; kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.3);
-          if(kart.userData.isPlayer&&now-lastCollSnd>500){
-            playBeep(110,0.25,0.28); lastCollSnd=now; vib([35]);
-            showObstaclePopup('🕳️ ¡BACHE!');
+        // Atrapa una sola vez por entrada: hasta que el kart no salga del
+        // hueco no vuelve a activarse. Antes se repetía cada vez que se le
+        // acababa el trompo estando dentro, y el kart se quedaba atascado.
+        const dentro=dist<obs.r;
+        if(dentro&&!obs.dentro.has(kart)){
+          obs.dentro.add(kart);
+          if(Math.abs(kart.userData.speed)>0.05){
+            kart.userData.speed*=0.72; kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.3);
+            if(kart.userData.isPlayer&&now-lastCollSnd>500){
+              playBeep(110,0.25,0.28); lastCollSnd=now; vib([35]);
+              showObstaclePopup('🕳️ ¡BACHE!');
+            }
           }
+        }else if(!dentro&&obs.dentro.has(kart)){
+          obs.dentro.delete(kart);
         }
       } else if(obs.type==='aceite'){
         // Pérdida de control — con cooldown para poder escapar
@@ -1333,6 +1402,7 @@ function createBananaPeel(){
   }
   const tallo=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.055,0.18,6),new THREE.MeshLambertMaterial({color:0x6B4A17}));
   tallo.position.y=0.17; g.add(tallo);
+  g.scale.setScalar(1.35);
   return g;
 }
 
@@ -1362,6 +1432,7 @@ function createBullet(){
     e.rotation.x=-Math.PI/2; e.position.z=z;
     e.userData.esEstela=true; e.userData.baseOp=op; g.add(e);
   });
+  g.scale.setScalar(1.3);
   return g;
 }
 
