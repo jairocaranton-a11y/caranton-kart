@@ -1,24 +1,27 @@
 📸 INSTRUCCIONES PARA LAS FOTOS
 ================================
 
-Guarda las fotos de cada personaje en esta carpeta con EXACTAMENTE estos nombres:
+Guarda las fotos de cada piloto en esta carpeta con EXACTAMENTE estos nombres:
 
-  santiago.jpg   → foto de Santiago
-  liam.jpg       → foto de Liam
-  sergio.jpg     → foto de Sergio
-  esteban.jpg    → foto de Esteban
+  santiago.png   → foto de Santiago
+  liam.png       → foto de Liam
+  sergio.png     → foto de Sergio
+  esteban.png    → foto de Esteban
+  mateo.png      → foto de Mateo     (pendiente)
+  andres.png     → foto de Andrés    (pendiente)
 
-✅ Las fotos funcionarán automáticamente cuando abras el juego con un servidor local.
+Mientras una foto no exista, ese piloto sale con sus iniciales sobre su
+color. En cuanto agregues el archivo con el nombre correcto, aparece la
+foto sola: no hay que tocar el código.
 
-⚠️ IMPORTANTE: Para que las fotos carguen correctamente, NO abras
-   el index.html haciendo doble clic. En cambio, abre una terminal
-   en la carpeta familia-kart y escribe:
+Consejos:
+  · Cuadradas o casi cuadradas se ven mejor (se recortan en círculo).
+  · Con la cara centrada y grande.
+
+⚠️ IMPORTANTE: para que las fotos carguen, NO abras el index.html con
+   doble clic. Abre una terminal en esta carpeta y escribe:
 
    npx serve .
 
-   Luego abre http://localhost:3000 en tu navegador.
-
-   (Si no tienes Node.js, descárgalo gratis en https://nodejs.org)
-
-🎮 Sin fotos el juego igual funciona — los personajes tendrán
-   los colores y las iniciales de cada uno.
+   Luego abre http://localhost:3000 en el navegador.
+   (En https://jairocaranton-a11y.github.io/caranton-kart/ funciona directo.)

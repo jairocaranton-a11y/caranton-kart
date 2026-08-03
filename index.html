@@ -260,6 +260,8 @@ const CHARS = [
   {name:'Liam',    color:0x2299FF,hex:'#2299FF',initial:'LI',photo:'fotos/liam.png',    speed:1.05},
   {name:'Sergio',  color:0xFF2233,hex:'#FF2233',initial:'SE',photo:'fotos/sergio.png',  speed:0.95},
   {name:'Esteban', color:0xDDDDDD,hex:'#DDDDDD',initial:'ES',photo:'fotos/esteban.png', speed:0.9},
+  {name:'Mateo',   color:0x2ECC5A,hex:'#2ECC5A',initial:'MA',photo:'fotos/mateo.png',   speed:1.0},
+  {name:'Andrés',  color:0xA855F7,hex:'#A855F7',initial:'AN',photo:'fotos/andres.png',  speed:0.98},
 ];
 
 const TRACKS = [
@@ -1248,12 +1250,19 @@ function spawnKarts(playerIdx){
   karts.forEach(k=>scene.remove(k));karts=[];
   bananas.forEach(b=>scene.remove(b.mesh));bananas=[];
   shells.forEach(s=>scene.remove(s.mesh));shells=[];
-  const order=[playerIdx,...[0,1,2,3].filter(i=>i!==playerIdx)];
-  const pers=[{lookAhead:5,aggression:0.82,sideSpeed:0.025,mistakeInterval:6},{lookAhead:12,aggression:0.74,sideSpeed:0.010,mistakeInterval:14},{lookAhead:7,aggression:0.78,sideSpeed:0.040,mistakeInterval:9}];
+  const order=[playerIdx,...CHARS.map((_,i)=>i).filter(i=>i!==playerIdx)];
+  // Una personalidad por rival; si algún día hay más pilotos, se reparten en ciclo
+  const pers=[{lookAhead:5,aggression:0.82,sideSpeed:0.025,mistakeInterval:6},
+              {lookAhead:12,aggression:0.74,sideSpeed:0.010,mistakeInterval:14},
+              {lookAhead:7,aggression:0.78,sideSpeed:0.040,mistakeInterval:9},
+              {lookAhead:9,aggression:0.80,sideSpeed:0.018,mistakeInterval:11},
+              {lookAhead:6,aggression:0.76,sideSpeed:0.032,mistakeInterval:8}];
   order.forEach((charIdx,slot)=>{
     const kart=createKart(charIdx); kart.userData.isPlayer=slot===0;
-    if(slot>0){const p=pers[slot-1];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=1.04;kart.userData.baseMaxSpeed*=1.04;}
-    const t=slot*0.018,pos=trackCurve.getPoint(t),tan=trackCurve.getTangent(t);
+    if(slot>0){const p=pers[(slot-1)%pers.length];Object.assign(kart.userData,{...p,sideOffset:(Math.random()-.5)*4,mistakeTimer:Math.random()*p.mistakeInterval});kart.userData.maxSpeed*=1.04;kart.userData.baseMaxSpeed*=1.04;}
+    // Con 6 pilotos la parrilla se estiraba demasiado por delante de la meta:
+    // se acorta el paso para que ocupe lo mismo que antes con 4.
+    const t=slot*0.012,pos=trackCurve.getPoint(t),tan=trackCurve.getTangent(t);
     const right=new THREE.Vector3(-tan.z,0,tan.x),off=(slot%2===0?-1:1)*2.8;
     const wp0=Math.floor(t*TRACK_SEGS);
     kart.position.set(pos.x+right.x*off,trackH(wp0),pos.z+right.z*off);
@@ -1706,7 +1715,7 @@ const MODOS=[
   {id:'rapida',emoji:'🏁',nombre:'Carrera rápida',desc:'Eliges una pista'},
   {id:'torneo',emoji:'🏆',nombre:'Torneo',desc:'Las 4 pistas · puntos'},
 ];
-const PUNTOS=[5,3,1,0];   // 🥇 🥈 🥉 4°
+const PUNTOS=[5,3,1];     // 🥇 🥈 🥉; del 4º en adelante, 0
 
 function buildMenu(){
   // Modo de juego
@@ -1796,11 +1805,11 @@ function renderTorneo(){
     ? '🏆 CAMPEÓN DEL TORNEO 🏆'
     : `🏁 ${TRACKS[torneo.ronda].name} · ${torneo.ronda+1}/${TRACKS.length}`;
   const orden=CHARS.map((ch,i)=>({ch,pts:torneo.puntos[i]})).sort((a,b)=>b.pts-a.pts);
-  const medalla=['🥇','🥈','🥉','4°'];
+  const medalla=(i)=>['🥇','🥈','🥉'][i]||`${i+1}°`;
   document.getElementById('torneoPanel').innerHTML=
     `<div id="torneoTitulo">TABLA DEL TORNEO · CARRERA ${torneo.ronda+1} DE ${TRACKS.length}</div>`+
     orden.map((o,i)=>`<div class="torFila${i===0?' lider':''}">`+
-      `<span class="torPos">${medalla[i]}</span>`+
+      `<span class="torPos">${medalla(i)}</span>`+
       `<span class="torNom" style="color:${o.ch.hex}">${o.ch.name}</span>`+
       `<span class="torPts">${o.pts} pts</span></div>`).join('');
   document.getElementById('torneoPanel').style.display='block';
@@ -1885,11 +1894,9 @@ function resolveRace(){
     };pImg.src=ch.photo;
   });
 
-  // 4° lugar
-  if(sorted[3]){
-    const ch=CHARS[sorted[3].userData.charIdx];
-    document.getElementById('pod4Row').textContent=`4° ${ch.name} 💨`;
-  }
+  // Del 4º puesto en adelante, en una sola línea
+  document.getElementById('pod4Row').textContent=
+    sorted.slice(3).map((k,i)=>`${i+4}° ${CHARS[k.userData.charIdx].name}`).join('  ·  ');
 
   // Puntos del torneo (o pantalla normal de carrera suelta)
   if(torneo){
