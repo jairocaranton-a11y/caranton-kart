@@ -102,6 +102,22 @@
     #joyBrakeBtn{width:64px;height:64px;border-radius:50%;background:rgba(255,60,60,.18);border:2.5px solid rgba(255,60,60,.5);display:flex;align-items:center;justify-content:center;font-size:28px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
     #joyGasBtn{width:80px;height:80px;border-radius:50%;background:rgba(60,220,110,.2);border:2.5px solid rgba(60,220,110,.55);display:flex;align-items:center;justify-content:center;font-size:36px;pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;}
 
+    /* MODO DE JUEGO */
+    #modeSelect{display:flex;gap:clamp(10px,2.5vw,20px);margin-bottom:16px;}
+    .modeCard{background:rgba(255,255,255,.08);border:3px solid transparent;border-radius:16px;padding:clamp(10px,2vw,16px) clamp(16px,3vw,26px);cursor:pointer;transition:all .2s;text-align:center;min-width:clamp(118px,19vw,155px);}
+    .modeCard:hover,.modeCard.sel{border-color:#25E5A0;background:rgba(37,229,160,.15);transform:translateY(-3px);box-shadow:0 8px 24px rgba(37,229,160,.25);}
+    #torneoNota{display:none;color:#25E5A0;font-size:clamp(11px,1.7vw,14px);font-weight:700;margin-bottom:20px;letter-spacing:.5px;}
+
+    /* TABLA DEL TORNEO */
+    #torneoPanel{display:none;background:rgba(0,0,0,.5);border:2px solid rgba(37,229,160,.45);border-radius:14px;padding:10px 14px;margin:4px 0 8px;min-width:clamp(240px,34vw,330px);}
+    #torneoTitulo{color:#25E5A0;font-size:clamp(10px,1.5vw,13px);font-weight:900;letter-spacing:2px;margin-bottom:6px;}
+    .torFila{display:flex;align-items:center;gap:10px;padding:3px 4px;border-radius:7px;font-size:clamp(12px,1.8vw,16px);font-weight:900;}
+    .torFila.lider{background:rgba(255,215,0,.14);}
+    .torPos{width:26px;text-align:center;}
+    .torNom{flex:1;text-align:left;}
+    .torPts{color:#FFD700;}
+    .torGana{color:#25E5A0;font-size:.8em;margin-left:4px;}
+
     /* ── Menú en pantallas bajas (celular en horizontal) ──
        Estaba centrado en un flex de alto fijo y sin scroll: al no caber,
        el botón de empezar quedaba fuera de la pantalla y no se podía pulsar. */
@@ -109,6 +125,12 @@
       #menu{justify-content:flex-start;overflow-y:auto;padding:10px 10px 18px;}
       #menuTitle{font-size:clamp(22px,5vw,34px);margin-bottom:2px;}
       #menuSub{font-size:11px;margin-bottom:10px;letter-spacing:1px;}
+      #modeSelect{gap:8px;margin-bottom:8px;}
+      .modeCard{padding:6px 12px;min-width:92px;border-width:2px;}
+      #torneoNota{font-size:10px;margin-bottom:8px;}
+      #torneoPanel{padding:4px 10px;margin:1px 0 4px;}
+      #torneoTitulo{margin-bottom:2px;font-size:9px;}
+      .torFila{font-size:11px;padding:1px 3px;}
       #trackSelect{gap:10px;margin-bottom:10px;}
       .trackCard{padding:8px 12px;min-width:96px;border-width:2px;}
       .trackEmoji{font-size:22px;margin-bottom:2px;}
@@ -120,6 +142,19 @@
       .charName{font-size:11px;margin-bottom:2px;}
       .charBest{font-size:9px;}
       #btnStart{font-size:14px;padding:9px 26px;letter-spacing:2px;}
+      /* El podio ahora lleva además la tabla del torneo: mismo tratamiento */
+      #podiumScreen{justify-content:flex-start;overflow-y:auto;padding:8px 10px 16px;}
+      #podiumTitle{font-size:clamp(15px,3vw,21px);margin-bottom:2px;}
+      #podiumStage{gap:6px;margin-bottom:6px;}
+      .podAv{width:32px;height:32px;font-size:13px;border-width:2px;}
+      .podName{font-size:11px;} .podTime{font-size:9px;}
+      .podBlock{font-size:16px;padding-top:5px;}
+      .podBlock.p1{width:52px;height:42px;} .podBlock.p2{width:46px;height:34px;} .podBlock.p3{width:42px;height:27px;}
+      #pod4Row{font-size:10px;margin-bottom:2px;}
+      #podNewRecord{font-size:11px;height:14px;}
+      #btnRestart{font-size:13px;padding:8px 22px;margin-top:2px;}
+      /* El aviso de récord tapaba el podio y la tabla: pequeño y arriba */
+      #recordFlash{top:14px;transform:translate(-50%,0);font-size:14px;padding:6px 16px;white-space:nowrap;border-radius:10px;}
     }
 
     /* ── HUD en celulares: todo arriba, para no estorbar a los controles ── */
@@ -158,8 +193,10 @@
 <!-- MENU -->
 <div id="menu">
   <div id="menuTitle">🏎️ CARANTON KART</div>
-  <div id="menuSub">ELIGE PISTA Y PILOTO</div>
+  <div id="menuSub">ELIGE MODO, PISTA Y PILOTO</div>
+  <div id="modeSelect"></div>
   <div id="trackSelect"></div>
+  <div id="torneoNota">Se corren las 4 pistas seguidas · 🥇5 🥈3 🥉1 puntos</div>
   <div id="charGrid"></div>
   <button id="btnStart">¡ARRANCAR! 🚦</button>
 </div>
@@ -172,6 +209,7 @@
   <div id="podiumTitle">🏁 RESULTADOS 🏁</div>
   <div id="podiumStage"></div>
   <div id="pod4Row"></div>
+  <div id="torneoPanel"></div>
   <div id="podNewRecord"></div>
   <button id="btnRestart">🔄 Jugar de nuevo</button>
 </div>
@@ -248,6 +286,15 @@ const TRACKS = [
     treeMinR:124, hasObstacles:true, treeType:'cactus',
     hills:7.0, movingDunes:true,
   },
+  {
+    name:'Cumbre Nevada', emoji:'❄️', desc:'Hielo resbaloso · nevada · pinos',
+    pts:[[0,-100],[36,-96],[66,-82],[88,-58],[96,-28],[80,-6],[98,20],[90,52],[64,76],[32,90],
+         [-2,86],[-32,96],[-64,84],[-88,60],[-98,28],[-82,6],[-100,-20],[-92,-52],[-66,-78],[-34,-96]],
+    sky:{bg:0xBBD4E8,fog:0xD3E3F0,ambInt:0.95,sunInt:1.05,sunPos:[-40,95,50],sunCol:0xEAF2FF},
+    kerbA:0xD81B1B,kerbB:0xffffff,groundCol:0xEEF4FA,
+    treeMinR:118, hasObstacles:true, treeType:'pino',
+    hills:5.0, agarre:0.68, hielo:true, nieva:true,
+  },
 ];
 
 const SKY_PRESET_REFS = TRACKS.map(t=>t.sky);
@@ -322,6 +369,10 @@ function initAudio(){
   engineOsc.type='sawtooth'; engineOsc.frequency.value=90; engineGain.gain.value=0;
   engineOsc.connect(dist); dist.connect(engineGain); engineGain.connect(audioCtx.destination);
   engineOsc.start();
+  startBgMusic();
+}
+function startBgMusic(){
+  if(!audioCtx||bgInterval)return;
   bgInterval=setInterval(()=>{
     if(!audioCtx||audioCtx.state==='suspended') return;
     const freq=BG_MELODY[bgIdx++%BG_MELODY.length];
@@ -592,6 +643,42 @@ function checkLapCrossing(kart){
 // ══════════════════════════════════════════
 let obstacleObjects=[];
 let dunes=[];
+let nieve=null;
+
+// ❄️ Nevada: copos que caen alrededor de la cámara y se reciclan al llegar al suelo
+function buildNieve(trackCfg){
+  nieve=null;
+  if(!trackCfg.nieva)return;
+  const N=isMobile?260:600, pos=new Float32Array(N*3), vel=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    pos[i*3]  =(Math.random()-0.5)*70;
+    pos[i*3+1]= Math.random()*26;
+    pos[i*3+2]=(Math.random()-0.5)*70;
+    vel[i]=2.4+Math.random()*3.2;
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:0.34,
+    transparent:true,opacity:0.9,depthWrite:false,sizeAttenuation:true}));
+  pts.frustumCulled=false; scene.add(pts);
+  nieve={pts,pos,vel,N};
+}
+function updateNieve(dt){
+  if(!nieve)return;
+  const {pos,vel,N}=nieve;
+  const cx=camera.position.x, cz=camera.position.z, cy=camera.position.y;
+  for(let i=0;i<N;i++){
+    pos[i*3+1]-=vel[i]*dt;
+    pos[i*3]  +=Math.sin(pos[i*3+1]*0.6+i)*0.012;   // vaivén al caer
+    // Reciclar: si cae por debajo o se aleja, reaparece arriba cerca de la cámara
+    if(pos[i*3+1]<cy-14||Math.abs(pos[i*3]-cx)>40||Math.abs(pos[i*3+2]-cz)>40){
+      pos[i*3]  =cx+(Math.random()-0.5)*70;
+      pos[i*3+1]=cy+8+Math.random()*16;
+      pos[i*3+2]=cz+(Math.random()-0.5)*70;
+    }
+  }
+  nieve.pts.geometry.attributes.position.needsUpdate=true;
+}
 
 function makeTreeTexture(){
   const c=document.createElement('canvas');c.width=128;c.height=256;
@@ -634,9 +721,38 @@ function makeCactusTexture(){
 }
 let _cactusTex=null;
 
+function makePineTexture(){
+  const c=document.createElement('canvas');c.width=128;c.height=256;
+  const ctx=c.getContext('2d'); ctx.clearRect(0,0,128,256);
+  // Tronco
+  const tg=ctx.createLinearGradient(54,190,74,256);
+  tg.addColorStop(0,'#3B2410');tg.addColorStop(0.5,'#5C3A18');tg.addColorStop(1,'#3B2410');
+  ctx.fillStyle=tg; ctx.fillRect(56,196,16,60);
+  // Copa: tres faldones triangulares, cada uno con su capa de nieve
+  const pisos=[{y:206,w:52,h:64},{y:150,w:43,h:58},{y:98,w:33,h:52}];
+  pisos.forEach(({y,w,h})=>{
+    ctx.fillStyle='#14512B';
+    ctx.beginPath();ctx.moveTo(64,y-h);ctx.lineTo(64+w,y);ctx.lineTo(64-w,y);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#1C6B39';
+    ctx.beginPath();ctx.moveTo(64,y-h);ctx.lineTo(64+w*0.45,y);ctx.lineTo(64-w*0.15,y);ctx.closePath();ctx.fill();
+    // Nieve acumulada sobre la rama
+    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.beginPath();ctx.moveTo(64,y-h);
+    ctx.lineTo(64+w*0.62,y-h*0.10);
+    ctx.quadraticCurveTo(64+w*0.30,y-h*0.30, 64+w*0.10,y-h*0.06);
+    ctx.quadraticCurveTo(64-w*0.16,y-h*0.34, 64-w*0.58,y-h*0.08);
+    ctx.closePath();ctx.fill();
+  });
+  // Punta nevada
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(64,46,7,0,Math.PI*2);ctx.fill();
+  return new THREE.CanvasTexture(c);
+}
+let _pinoTex=null;
+
 function addBillboard(x,z,scale,kind){
   let tex;
   if(kind==='cactus'){ if(!_cactusTex)_cactusTex=makeCactusTexture(); tex=_cactusTex; }
+  else if(kind==='pino'){ if(!_pinoTex)_pinoTex=makePineTexture(); tex=_pinoTex; }
   else { if(!_treeTex)_treeTex=makeTreeTexture(); tex=_treeTex; }
   const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.15,side:THREE.DoubleSide,depthWrite:false});
   const h=9*scale,w=5*scale;
@@ -652,6 +768,7 @@ function buildEnvironment(trackCfg){
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshLambertMaterial({map:makeGrassTexture(trackCfg.groundCol)}));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=!isMobile; scene.add(ground);
 
+  buildNieve(trackCfg);
   const minR=trackCfg.treeMinR||78;
   const deco=trackCfg.treeType||'tree';
   for(let i=0;i<(isMobile?40:90);i++){
@@ -772,6 +889,30 @@ function createPothole(x,z,y=0){
 function createOilSlick(x,z,y=0){
   const c=document.createElement('canvas');c.width=c.height=256;
   const ctx=c.getContext('2d');ctx.clearRect(0,0,256,256);
+  const esHielo=!!(currentTrackCfg&&currentTrackCfg.hielo);
+  if(esHielo){
+    // 🧊 Placa de hielo: misma trampa, otra piel
+    const g=ctx.createRadialGradient(128,124,6,128,128,116);
+    g.addColorStop(0,'rgba(238,250,255,0.92)');
+    g.addColorStop(0.35,'rgba(176,222,244,0.78)');
+    g.addColorStop(0.72,'rgba(132,192,226,0.5)');
+    g.addColorStop(1,'rgba(150,200,230,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(128,128,118,88,0,0,Math.PI*2);ctx.fill();
+    // Brillos y grietas del hielo
+    ctx.strokeStyle='rgba(255,255,255,0.75)';ctx.lineWidth=2.5;
+    [[70,110,120,96],[120,96,168,124],[110,150,150,168],[96,132,128,128]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    });
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.beginPath();ctx.ellipse(98,104,34,16,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(160,150,24,11,0.4,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(120,180,215,0.55)';ctx.lineWidth=4;
+    ctx.beginPath();ctx.ellipse(128,128,116,86,0,0,Math.PI*2);ctx.stroke();
+    const mh=new THREE.Mesh(new THREE.PlaneGeometry(6.2,4.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+    mh.rotation.x=-Math.PI/2;mh.position.set(x,y+0.028,z);scene.add(mh);
+    obstacleObjects.push({type:'aceite',mesh:mh,x,z,r:2.3,hielo:true});
+    return;
+  }
   // Base iridiscente del aceite
   const g=ctx.createRadialGradient(128,128,4,128,128,112);
   g.addColorStop(0,'rgba(12,0,32,0.97)');
@@ -1087,7 +1228,9 @@ function createKart(charIdx){
   const nameTag=new THREE.Mesh(new THREE.PlaneGeometry(2.2,0.52),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
   nameTag.position.set(0,2.5,0);nameTag.userData.isNameTag=true;group.add(nameTag);
 
-  group.userData={charIdx,speed:0,angle:0,maxSpeed:0.28*ch.speed,baseMaxSpeed:0.28*ch.speed,accel:0.013,friction:0.965,turnRate:0.038,wpIdx:0,lap:-1,finished:false,isPlayer:false,spinTimer:0,boostTimer:0,oilCooldown:0,finishTime:null,lookAhead:8,sideOffset:0,sideSpeed:0.015,aggression:0.7,mistakeTimer:5,mistakeInterval:6};
+  // En pistas con hielo el kart gira menos y conserva más inercia
+  const agarre=(currentTrackCfg&&currentTrackCfg.agarre)||1;
+  group.userData={charIdx,speed:0,angle:0,maxSpeed:0.28*ch.speed,baseMaxSpeed:0.28*ch.speed,accel:0.013,friction:1-(1-0.965)*agarre,turnRate:0.038*agarre,wpIdx:0,lap:-1,finished:false,isPlayer:false,spinTimer:0,boostTimer:0,oilCooldown:0,finishTime:null,lookAhead:8,sideOffset:0,sideSpeed:0.015,aggression:0.7,mistakeTimer:5,mistakeInterval:6};
   return group;
 }
 
@@ -1095,6 +1238,7 @@ function createKart(charIdx){
 //  ESTADO DEL JUEGO
 // ══════════════════════════════════════════
 let state='menu',karts=[],playerKart=null,raceStart=0,selectedChar=0,selectedTrack=0;
+let modo='rapida', torneo=null;   // torneo = {ronda, puntos[]}
 let playerItem=null,bananas=[],shells=[],lastCollSnd=0,lastTreeSnd=0;
 
 // ══════════════════════════════════════════
@@ -1332,7 +1476,7 @@ function checkObstacleCollisions(){
           kart.userData.oilCooldown=3.8; // inmunidad 3.8s: da tiempo de alejarse
           if(kart.userData.isPlayer&&now-lastCollSnd>400){
             playCollisionSound(); lastCollSnd=now; vib([60,40,60,40,60]);
-            showObstaclePopup('🛢️ ¡ACEITE!');
+            showObstaclePopup(obs.hielo?'🧊 ¡HIELO!':'🛢️ ¡ACEITE!');
           }
         }
       }
@@ -1558,11 +1702,30 @@ function drawMinimap(){
 // ══════════════════════════════════════════
 //  MENÚ
 // ══════════════════════════════════════════
+const MODOS=[
+  {id:'rapida',emoji:'🏁',nombre:'Carrera rápida',desc:'Eliges una pista'},
+  {id:'torneo',emoji:'🏆',nombre:'Torneo',desc:'Las 4 pistas · puntos'},
+];
+const PUNTOS=[5,3,1,0];   // 🥇 🥈 🥉 4°
+
 function buildMenu(){
+  // Modo de juego
+  const mg=document.getElementById('modeSelect');mg.innerHTML='';
+  MODOS.forEach(m=>{
+    const div=document.createElement('div');div.className='modeCard'+(m.id===modo?' sel':'');
+    div.innerHTML=`<span class="trackEmoji">${m.emoji}</span><div class="trackName">${m.nombre}</div><div class="trackDesc">${m.desc}</div>`;
+    div.addEventListener('click',()=>{modo=m.id;buildMenu();});
+    mg.appendChild(div);
+  });
+  // En torneo no se elige pista: se corren todas en orden
+  const esTorneo=modo==='torneo';
+  document.getElementById('trackSelect').style.display=esTorneo?'none':'flex';
+  document.getElementById('torneoNota').style.display=esTorneo?'block':'none';
+
   // Track select
   const tg=document.getElementById('trackSelect');tg.innerHTML='';
   TRACKS.forEach((tr,i)=>{
-    const div=document.createElement('div');div.className='trackCard'+(i===0?' sel':'');
+    const div=document.createElement('div');div.className='trackCard'+(i===selectedTrack?' sel':'');
     div.innerHTML=`<span class="trackEmoji">${tr.emoji}</span><div class="trackName">${tr.name}</div><div class="trackDesc">${tr.desc}</div>`;
     div.addEventListener('click',()=>{document.querySelectorAll('.trackCard').forEach(c=>c.classList.remove('sel'));div.classList.add('sel');selectedTrack=i;});
     tg.appendChild(div);
@@ -1572,29 +1735,50 @@ function buildMenu(){
   const grid=document.getElementById('charGrid');grid.innerHTML='';
   CHARS.forEach((ch,i)=>{
     const best=LS.getBest(i);
-    const div=document.createElement('div');div.className='charCard'+(i===0?' sel':'');
+    const div=document.createElement('div');div.className='charCard'+(i===selectedChar?' sel':'');
     div.innerHTML=`<div class="charAv" style="background:${ch.hex}" id="cav${i}">${ch.initial}</div><div class="charName">${ch.name}</div><div class="charBest">${best?'⏱ '+LS.fmt(best):'Sin récord'}</div>`;
     div.addEventListener('click',()=>{document.querySelectorAll('.charCard').forEach(c=>c.classList.remove('sel'));div.classList.add('sel');selectedChar=i;});
     grid.appendChild(div);
     const img=new Image();img.onload=()=>{const av=document.getElementById('cav'+i);if(av){av.innerHTML='';const im=img.cloneNode();im.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';av.appendChild(im);}};img.src=ch.photo;
   });
+}
 
+// Arranca una pista concreta; sirve para la carrera suelta y para encadenar el torneo
+function arrancarCarrera(indice){
+  initAudio(); startBgMusic();
+  clearScene();
+  selectedTrack=indice;
+  const cfg=TRACKS[indice];
+  applySky(cfg.sky);
+  buildTrack(cfg);
+  buildEnvironment(cfg);
+  buildItemBoxes();
+  if(cfg.hasObstacles) buildTrackObstacles();
+  document.getElementById('menu').style.display='none';
+  document.getElementById('podiumScreen').style.display='none';
+  playerItem=null; updateItemHUD();
+  spawnKarts(selectedChar);
+  startCountdown();
+}
+
+// Los botones fijos se enganchan UNA sola vez: buildMenu() se vuelve a llamar
+// al salir de cada carrera y antes acumulaba un listener nuevo en cada vuelta.
+function initBotonesMenu(){
   document.getElementById('btnStart').addEventListener('click',()=>{
-    initAudio();
-    clearScene();
-    const cfg=TRACKS[selectedTrack];
-    applySky(cfg.sky);
-    buildTrack(cfg);
-    buildEnvironment(cfg);
-    buildItemBoxes();
-    if(cfg.hasObstacles) buildTrackObstacles();
-    document.getElementById('menu').style.display='none';
-    spawnKarts(selectedChar);
-    startCountdown();
+    if(modo==='torneo'){ torneo={ronda:0,puntos:CHARS.map(()=>0)}; arrancarCarrera(0); }
+    else { torneo=null; arrancarCarrera(selectedTrack); }
   });
 
   document.getElementById('btnRestart').addEventListener('click',()=>{
     document.getElementById('podiumScreen').style.display='none';
+    // En torneo el botón encadena la siguiente pista en vez de volver al menú
+    if(torneo&&torneo.ronda<TRACKS.length-1){
+      torneo.ronda++;
+      arrancarCarrera(torneo.ronda);
+      return;
+    }
+    torneo=null;
+    document.getElementById('torneoPanel').style.display='none';
     document.getElementById('hud').style.display='none';
     showMobileControls(false); // ocultar controles al volver al menú
     buildMenu();
@@ -1605,6 +1789,26 @@ function buildMenu(){
   });
 }
 
+// Tabla acumulada del torneo, bajo el podio de cada carrera
+function renderTorneo(){
+  const ultima=torneo.ronda>=TRACKS.length-1;
+  document.getElementById('podiumTitle').textContent = ultima
+    ? '🏆 CAMPEÓN DEL TORNEO 🏆'
+    : `🏁 ${TRACKS[torneo.ronda].name} · ${torneo.ronda+1}/${TRACKS.length}`;
+  const orden=CHARS.map((ch,i)=>({ch,pts:torneo.puntos[i]})).sort((a,b)=>b.pts-a.pts);
+  const medalla=['🥇','🥈','🥉','4°'];
+  document.getElementById('torneoPanel').innerHTML=
+    `<div id="torneoTitulo">TABLA DEL TORNEO · CARRERA ${torneo.ronda+1} DE ${TRACKS.length}</div>`+
+    orden.map((o,i)=>`<div class="torFila${i===0?' lider':''}">`+
+      `<span class="torPos">${medalla[i]}</span>`+
+      `<span class="torNom" style="color:${o.ch.hex}">${o.ch.name}</span>`+
+      `<span class="torPts">${o.pts} pts</span></div>`).join('');
+  document.getElementById('torneoPanel').style.display='block';
+  document.getElementById('btnRestart').textContent = ultima
+    ? '🔄 Nuevo torneo'
+    : `▶ Siguiente: ${TRACKS[torneo.ronda+1].emoji} ${TRACKS[torneo.ronda+1].name}`;
+}
+
 function clearScene(){
   // Limpiar objetos dinámicos (pista, árboles, etc.)
   const keep=new Set();
@@ -1612,7 +1816,7 @@ function clearScene(){
     if(obj===ambientLight||obj===sun||obj===hemiLight)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
-  obstacleObjects=[];dunes=[];_treeTex=null;_cactusTex=null;itemBoxes=[];karts=[];bananas=[];shells=[];
+  obstacleObjects=[];dunes=[];_treeTex=null;_cactusTex=null;_pinoTex=null;nieve=null;itemBoxes=[];karts=[];bananas=[];shells=[];
 }
 
 // ══════════════════════════════════════════
@@ -1687,6 +1891,16 @@ function resolveRace(){
     document.getElementById('pod4Row').textContent=`4° ${ch.name} 💨`;
   }
 
+  // Puntos del torneo (o pantalla normal de carrera suelta)
+  if(torneo){
+    sorted.forEach((k,i)=>{ torneo.puntos[k.userData.charIdx]+=PUNTOS[i]||0; });
+    renderTorneo();
+  }else{
+    document.getElementById('torneoPanel').style.display='none';
+    document.getElementById('podiumTitle').textContent='🏁 RESULTADOS 🏁';
+    document.getElementById('btnRestart').textContent='🔄 Jugar de nuevo';
+  }
+
   // Nuevo récord
   document.getElementById('podNewRecord').textContent=isNewRecord?'🏆 ¡NUEVO RÉCORD PERSONAL!':'';
 
@@ -1709,13 +1923,13 @@ function animate(t){
   requestAnimationFrame(animate);
   const dt=Math.min((t-lastT)/1000,0.05);lastT=t;
   if(state==='racing'){
-    updateDunes(t);
+    updateDunes(t);updateNieve(dt);
     updatePlayerKart(dt);
     karts.forEach(k=>{if(!k.userData.isPlayer)updateAI(k,dt);});
     checkKartCollisions();checkObstacleCollisions();
     updateItemBoxes(dt);updateProjectiles(dt);
     updateCamera();updateHUD();
-  }else if(state==='countdown'){updateDunes(t);updateCamera();updateBillboards();}
+  }else if(state==='countdown'){updateDunes(t);updateNieve(dt);updateCamera();updateBillboards();}
   renderer.render(scene,camera);
 }
 
@@ -1724,6 +1938,7 @@ function animate(t){
 // ══════════════════════════════════════════
 applySky(TRACKS[0].sky);
 buildMenu();
+initBotonesMenu();   // una sola vez, no en cada regreso al menú
 setupTouchControls();
 camera.position.set(0,30,60);camera.lookAt(0,0,0);
 // Mostrar pista en menú (preview idle)
