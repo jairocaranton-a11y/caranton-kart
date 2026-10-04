@@ -403,13 +403,17 @@ function playBeep(freq,dur,vol=0.3){
   g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
   o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+dur+0.05);
 }
+let _golpeBuf=null;
 function playCollisionSound(){
   if(!audioCtx)return;
-  const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.15,audioCtx.sampleRate);
-  const d=buf.getChannelData(0);
-  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+  if(!_golpeBuf){   // el ruido es siempre el mismo: se genera una sola vez
+    _golpeBuf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.15,audioCtx.sampleRate);
+    const d=_golpeBuf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+  }
   const src=audioCtx.createBufferSource(),g=audioCtx.createGain();
-  src.buffer=buf; g.gain.value=0.35; src.connect(g); g.connect(audioCtx.destination); src.start();
+  src.buffer=_golpeBuf; g.gain.value=0.35; src.connect(g); g.connect(audioCtx.destination);
+  src.start(); src.stop(audioCtx.currentTime+0.2);
   vib([40]);
 }
 function playBoostSound(){
@@ -1404,7 +1408,7 @@ function createTireStack(x,z,y=0){
   coneStripe.position.y=1.78; group.add(coneStripe);
   group.position.set(x,y,z);
   scene.add(group);
-  obstacleObjects.push({type:'llanta',mesh:group,x,z,r:0.88});
+  obstacleObjects.push({type:'llanta',mesh:group,x,z,r:0.88,dentro:new Set()});
 }
 
 function createPothole(x,z,y=0){
@@ -1568,7 +1572,7 @@ function buildMovingDunes(){
     const right=new THREE.Vector3(-dir.z,0,dir.x);
     const mesh=new THREE.Mesh(new THREE.SphereGeometry(2.6,12,9),sandMat);
     mesh.scale.y=0.5; mesh.castShadow=!isMobile; scene.add(mesh);
-    dunes.push({mesh,bx:p.x,bz:p.z,rx:right.x,rz:right.z,range:TRACK_W*0.62,phase:i*1.7,speed:0.7+i*0.13,baseY:trackH(idx),r:2.7});
+    dunes.push({mesh,bx:p.x,bz:p.z,rx:right.x,rz:right.z,range:TRACK_W*0.62,phase:i*1.7,speed:0.7+i*0.13,baseY:trackH(idx),r:2.7,dentro:new Set()});
   });
 }
 function updateDunes(t){
@@ -1831,6 +1835,7 @@ function createKart(charIdx){
 let state='menu',karts=[],playerKart=null,raceStart=0,selectedChar=0,selectedTrack=0;
 let modo='rapida', torneo=null;   // torneo = {ronda, puntos[]}
 let playerItem=null,bananas=[],shells=[],lastCollSnd=0,lastTreeSnd=0;
+let contactoKarts=new Set();   // parejas que ya se están tocando: el golpe suena al entrar, no mientras dure
 
 // ══════════════════════════════════════════
 //  SPAWN
@@ -2016,6 +2021,7 @@ function updateAI(kart,dt){
 // ══════════════════════════════════════════
 function checkKartCollisions(){
   const DIST=2.6;
+  const tocando=new Set();
   for(let i=0;i<karts.length;i++)for(let j=i+1;j<karts.length;j++){
     const a=karts[i],b=karts[j];
     const dx=a.position.x-b.position.x,dz=a.position.z-b.position.z;
@@ -2028,9 +2034,13 @@ function checkKartCollisions(){
       b.position.x-=nx*ov*0.6;b.position.z-=nz*ov*0.6;
       a.userData.speed*=(1-force*0.7);b.userData.speed*=(1-force*0.7);
       if(force>0.35){const w=Math.abs(a.userData.speed)<Math.abs(b.userData.speed)?a:b;w.userData.spinTimer=Math.max(w.userData.spinTimer,0.4+force*0.5);}
-      const now=Date.now();if(now-lastCollSnd>300){playCollisionSound();lastCollSnd=now;}
+      tocando.add(i+'-'+j);
+      if(!contactoKarts.has(i+'-'+j)){
+        const now=Date.now();if(now-lastCollSnd>120){playCollisionSound();lastCollSnd=now;}
+      }
     }
   }
+  contactoKarts=tocando;   // los que dejaron de tocarse quedan rearmados
 }
 
 function checkObstacleCollisions(){
@@ -2046,10 +2056,15 @@ function checkObstacleCollisions(){
           const nx=dx/dist,nz=dz/dist;
           kart.position.x=obs.x+nx*min; kart.position.z=obs.z+nz*min;
           kart.userData.speed*=-0.22; kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.35);
-          // Llantas se tambalean al golpe
-          if(obs.mesh){obs.mesh.rotation.z=(Math.random()-.5)*0.4;setTimeout(()=>{if(obs.mesh)obs.mesh.rotation.z=0;},380);}
-          if(kart.userData.isPlayer&&now-lastCollSnd>300){playCollisionSound();lastCollSnd=now;showObstaclePopup('🏎️ ¡LLANTAS!');}
-        }
+          // El sonido va al ENTRAR. Como el kart se recoloca justo en el límite,
+          // sin margen de salida entraría y saldría en fotogramas alternos y el
+          // ruido se volvía a repetir mientras siguiera apoyado.
+          if(!obs.dentro.has(kart)){
+            obs.dentro.add(kart);
+            if(obs.mesh){obs.mesh.rotation.z=(Math.random()-.5)*0.4;setTimeout(()=>{if(obs.mesh)obs.mesh.rotation.z=0;},380);}
+            if(kart.userData.isPlayer&&now-lastCollSnd>120){playCollisionSound();lastCollSnd=now;showObstaclePopup('🏎️ ¡LLANTAS!');}
+          }
+        }else if(dist>min*1.18){ obs.dentro.delete(kart); }
       } else if(obs.type==='hueco'){
         // Atrapa una sola vez por entrada: hasta que el kart no salga del
         // hueco no vuelve a activarse. Antes se repetía cada vez que se le
@@ -2088,11 +2103,14 @@ function checkObstacleCollisions(){
         kart.position.x=d.mesh.position.x+nx*min; kart.position.z=d.mesh.position.z+nz*min;
         kart.userData.speed*=0.5;
         kart.userData.spinTimer=Math.max(kart.userData.spinTimer,0.45);
-        if(kart.userData.isPlayer&&now-lastCollSnd>350){
-          playCollisionSound(); lastCollSnd=now; vib([50,30,50]);
-          showObstaclePopup('🏜️ ¡DUNA!');
+        if(!d.dentro.has(kart)){
+          d.dentro.add(kart);
+          if(kart.userData.isPlayer&&now-lastCollSnd>120){
+            playCollisionSound(); lastCollSnd=now; vib([50,30,50]);
+            showObstaclePopup('🏜️ ¡DUNA!');
+          }
         }
-      }
+      }else if(dist>min*1.18){ d.dentro.delete(kart); }
     });
   });
 }
@@ -2432,7 +2450,7 @@ function clearScene(){
     if(obj===ambientLight||obj===sun||obj===hemiLight)keep.add(obj);
   });
   scene.children.filter(o=>!keep.has(o)).forEach(o=>scene.remove(o));
-  obstacleObjects=[];dunes=[];decorAnimado=[];fuegos=[];_publicoTex=null;_treeTex=null;_cactusTex=null;_pinoTex=null;nieve=null;itemBoxes=[];karts=[];bananas=[];shells=[];
+  obstacleObjects=[];dunes=[];decorAnimado=[];fuegos=[];contactoKarts=new Set();_publicoTex=null;_treeTex=null;_cactusTex=null;_pinoTex=null;nieve=null;itemBoxes=[];karts=[];bananas=[];shells=[];
 }
 
 // ══════════════════════════════════════════
